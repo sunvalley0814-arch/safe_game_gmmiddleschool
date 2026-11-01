@@ -1,0 +1,1730 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>무사히 하굣길</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap">
+<style>
+/* Layout: one-screen game. Thin HUD on top, top-down grid world fills the rest; dialogue, phone chat and cards float over it. */
+:root{
+  --ink:#141a2e;
+  --ink-2:#232b4a;
+  --paper:#fffaf0;
+  --text:#1d2033;
+  --yellow:#ffd23f;
+  --yellow-d:#e0a800;
+  --safe:#22a565;
+  --danger:#e5484d;
+  --caution:#f0a030;
+  --muted:#9aa2c4;
+  --line:#2f3860;
+  --display:'Jua','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  --body:'Gowun Dodum','Malgun Gothic','Apple SD Gothic Neo',sans-serif;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%}
+body{background:var(--ink);color:#eef0fa;font-family:var(--body);overflow:hidden;-webkit-tap-highlight-color:transparent}
+#app{height:100%;display:flex;flex-direction:column}
+button{font:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible{outline:3px solid var(--yellow);outline-offset:2px}
+
+#hud{display:flex;align-items:center;gap:12px;padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));background:var(--ink);border-bottom:2px solid var(--line);flex-wrap:wrap}
+.clock{font-family:var(--display);background:var(--yellow);color:var(--ink);padding:4px 12px;border-radius:999px;font-size:16px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.mission{flex:1;min-width:0;font-size:14px;color:#dfe3f5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mission b{font-family:var(--display);font-weight:400;color:var(--yellow);margin-right:6px}
+.badges{display:flex;gap:4px;align-items:center}
+.badges .lab{font-size:12px;color:var(--muted);margin-right:4px;font-variant-numeric:tabular-nums}
+.bd{width:18px;height:18px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-size:10px;color:transparent}
+.bd.on{background:var(--yellow);border-color:var(--yellow);color:var(--ink);font-weight:700}
+
+#stage{position:relative;flex:1;min-height:0;overflow:hidden}
+#cv{position:absolute;inset:0;width:100%;height:100%;display:block;transition:filter 1.6s}
+#flash{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 0 0 rgba(229,72,77,0);transition:box-shadow .4s}
+#flash.on{box-shadow:inset 0 0 120px 30px rgba(229,72,77,.65)}
+#fade{position:absolute;inset:0;background:#000;opacity:0;pointer-events:none;transition:opacity .9s}
+#fade.on{opacity:1}
+#stage.hit{animation:shake .35s}
+@keyframes shake{20%{transform:translateX(-8px)}40%{transform:translateX(7px)}60%{transform:translateX(-5px)}80%{transform:translateX(3px)}}
+
+#pad{position:absolute;left:max(16px,env(safe-area-inset-left,0px));bottom:16px;display:grid;grid-template-columns:repeat(3,54px);grid-template-rows:repeat(3,54px);gap:4px;touch-action:none;user-select:none;-webkit-user-select:none}
+#pad button{border:2px solid rgba(255,255,255,.35);background:rgba(20,26,46,.55);color:#fff;border-radius:14px;font-size:22px;backdrop-filter:blur(4px);touch-action:none}
+#pad button:active,#pad button.on{background:var(--yellow);color:var(--ink);border-color:var(--yellow)}
+#pad .u{grid-column:2;grid-row:1}#pad .l{grid-column:1;grid-row:2}#pad .r{grid-column:3;grid-row:2}#pad .d{grid-column:2;grid-row:3}
+
+#goal{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:#fff;color:var(--ink);border:2px solid var(--yellow);padding:8px 18px;border-radius:18px;font-size:15px;font-weight:700;white-space:nowrap;max-width:calc(100% - 200px);overflow:hidden;text-overflow:ellipsis;box-shadow:0 4px 14px rgba(0,0,0,.35);pointer-events:none;z-index:0}
+#goal::after{content:'';position:absolute;left:50%;bottom:-8px;width:12px;height:12px;background:#fff;border-right:2px solid var(--yellow);border-bottom:2px solid var(--yellow);transform:translateX(-50%) rotate(45deg)}
+#goal[hidden]{display:none}
+#intro{position:absolute;inset:0;background:#000;z-index:20;display:flex;align-items:center;justify-content:center}
+#intro[hidden]{display:none}
+#intro.fadeout{opacity:0;pointer-events:none;transition:opacity 2.4s ease-in}
+#intro.fadeout #introV{visibility:hidden}
+#introSnd{position:absolute;right:max(16px,env(safe-area-inset-right,0px));bottom:max(16px,env(safe-area-inset-bottom,0px));background:rgba(0,0,0,.65);color:#fff;border:2px solid #fff;border-radius:999px;padding:10px 18px;font:inherit;font-size:15px;cursor:pointer}
+#introSnd[hidden]{display:none}
+#introTap{white-space:nowrap;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);background:#ffd23f;color:#1b1f2e;border:3px solid #fff;border-radius:999px;padding:16px 30px;font:inherit;font-size:20px;font-weight:700;cursor:pointer;box-shadow:0 6px 24px rgba(0,0,0,.6)}
+#introTap[hidden]{display:none}
+#introV{width:100%;height:100%;object-fit:contain;background:#000}
+#toast{position:absolute;left:50%;top:68px;transform:translate(-50%,-10px);background:var(--ink);color:#fff;border:2px solid var(--yellow);padding:8px 16px;border-radius:999px;font-size:14px;opacity:0;transition:opacity .3s,transform .3s;pointer-events:none;white-space:nowrap;max-width:calc(100% - 32px);overflow:hidden;text-overflow:ellipsis}
+#toast.on{opacity:1;transform:translate(-50%,0)}
+#sig{position:absolute;top:16px;right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:10px;align-items:center;background:#16181f;border:2px solid #3a3d45;border-radius:14px;padding:8px 14px 8px 10px;color:#fff}
+#sig .lamp{width:26px;height:26px;border-radius:50%;background:#ff4b4b;box-shadow:0 0 14px #ff4b4b}
+#sig[data-g="1"] .lamp{background:#3dff8a;box-shadow:0 0 14px #3dff8a}
+#sig small{display:block;font-size:11px;color:var(--muted)}
+#sig b{font-family:var(--display);font-weight:400;font-size:18px;font-variant-numeric:tabular-nums}
+
+#dlg{position:absolute;left:max(16px,env(safe-area-inset-left,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:16px;margin:0 auto;max-width:780px;max-height:78%;overflow:auto;background:var(--paper);color:var(--text);border:3px solid var(--ink);border-radius:16px;box-shadow:0 8px 0 rgba(0,0,0,.35);display:flex;gap:14px;padding:16px 18px;cursor:pointer}
+#dlg .face{flex:none;width:64px;height:64px;border-radius:50%;background:#ffe9a3;border:3px solid var(--ink);display:grid;place-items:center;font-size:34px;line-height:1;overflow:hidden}
+#dlg .face canvas{width:100%;height:100%;display:block}
+#dlg .bodyc{flex:1;min-width:0;display:flex;flex-direction:column;gap:6px}
+#dlg .who{align-self:flex-start;font-family:var(--display);font-size:15px;background:var(--ink);color:var(--yellow);padding:2px 12px;border-radius:999px}
+#dlg .txt{margin:0;font-size:17px;line-height:1.65;min-height:3.3em;word-break:keep-all;overflow-wrap:anywhere}
+#dlg[data-kind="nar"] .txt{color:#4a4f6a;font-style:italic}
+#dlg[data-kind="nar"] .face{background:#e6ecff}
+#dlg[data-kind="sys"] .face{background:#ffd9d9}
+#dlg .more{position:absolute;right:16px;bottom:10px;font-size:12px;color:#7d829c;animation:blink 1s infinite}
+#dlg.typing .more,#dlg.ask .more{visibility:hidden}
+@keyframes blink{50%{opacity:.2}}
+#choices{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+#choices button{display:flex;gap:10px;align-items:flex-start;text-align:left;background:#fff;color:var(--text);border:2px solid var(--ink);border-radius:12px;padding:10px 12px;font-size:15.5px;line-height:1.5;word-break:keep-all}
+#choices button:hover,#choices button:focus-visible{background:#fff3c0}
+#choices .k{flex:none;width:26px;height:26px;border-radius:8px;background:var(--ink);color:var(--yellow);font-family:var(--display);display:grid;place-items:center;font-size:15px}
+
+#sys{position:absolute;inset:0;display:grid;place-items:center;background:rgba(10,13,28,.55);padding-block:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#sys .card{width:min(460px,100%);background:var(--paper);color:var(--text);border:3px solid var(--ink);border-radius:20px;padding:24px 22px 20px;text-align:center;box-shadow:0 10px 0 rgba(0,0,0,.35);animation:pop .35s cubic-bezier(.2,1.6,.4,1)}
+@keyframes pop{from{transform:scale(.8);opacity:0}}
+#sys .ic{width:68px;height:68px;margin:0 auto 8px;border-radius:50%;display:grid;place-items:center;font-size:36px;color:#fff;font-family:var(--display);background:var(--safe)}
+#sys h2{margin:0 0 8px;font-family:var(--display);font-weight:400;font-size:28px;color:var(--safe)}
+a.vid{display:block;position:relative;margin:0 0 16px;border:2px solid var(--ink);border-radius:12px;overflow:hidden;text-decoration:none;background:linear-gradient(135deg,#1d2b4f,#0e1428);line-height:0;aspect-ratio:16/9}
+a.vid .ph{position:absolute;left:0;right:0;top:22%;text-align:center;color:#cfd6f5;font-size:15px;line-height:1.4}
+a.vid[hidden]{display:none}
+a.vid img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+a.vid .pl{position:absolute;left:50%;top:50%;width:58px;height:40px;margin:-20px 0 0 -29px;border-radius:12px;background:#f00;display:grid;place-items:center;color:#fff;font-size:20px;line-height:1;box-shadow:0 2px 10px rgba(0,0,0,.5)}
+a.vid .cap{position:absolute;left:0;right:0;bottom:0;padding:18px 12px 8px;background:linear-gradient(transparent,rgba(0,0,0,.8));color:#fff;font-size:13px;line-height:1.3;text-align:left}
+#sys p{margin:0 0 18px;font-size:16px;line-height:1.7;word-break:keep-all;text-align:left}
+#sys button{width:100%;border:3px solid var(--ink);border-radius:14px;background:var(--yellow);color:var(--ink);font-family:var(--display);font-size:19px;padding:10px}
+
+#tr{position:absolute;inset:0;background:var(--ink);display:grid;place-items:center;text-align:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));animation:fade .5s}
+@keyframes fade{from{opacity:0}}
+#tr .icons{font-size:40px;letter-spacing:10px;margin-bottom:10px}
+#tr .icons span{display:inline-block;animation:hop 1s infinite}
+#tr .icons span:nth-child(2){animation-delay:.15s}#tr .icons span:nth-child(3){animation-delay:.3s}
+@keyframes hop{50%{transform:translateY(-8px)}}
+#tr h2{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(28px,6vw,44px);color:var(--yellow);text-wrap:balance}
+#tr p{margin:8px 0 18px;color:#cfd4ea;font-size:16px;text-wrap:balance}
+#tr .tclock{font-family:var(--display);font-size:30px;font-variant-numeric:tabular-nums;color:#fff}
+#tr .bar{width:min(320px,80vw);height:10px;border-radius:999px;background:var(--ink-2);margin:12px auto 0;overflow:hidden}
+#tr .bar i{display:block;height:100%;width:0;background:var(--yellow);border-radius:999px}
+
+.over{position:absolute;inset:0;overflow:auto;background:linear-gradient(180deg,rgba(20,26,46,.55),rgba(20,26,46,.92) 55%);display:flex;justify-content:center;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.sheet{width:min(520px,100%);margin:auto 0;display:flex;flex-direction:column;gap:16px}
+.eyebrow{font-size:13px;letter-spacing:.12em;color:var(--yellow)}
+.logo{margin:0;font-family:var(--display);font-weight:400;font-size:clamp(46px,12vw,72px);line-height:1;color:#fff;text-shadow:0 5px 0 var(--ink);text-wrap:balance}
+.logo em{font-style:normal;color:var(--yellow)}
+.zone{display:inline-flex;align-self:flex-start;gap:8px;align-items:center;background:var(--yellow);color:var(--ink);font-family:var(--display);padding:4px 12px 4px 6px;border-radius:8px;font-size:14px}
+.zone i{font-style:normal;background:var(--ink);color:var(--yellow);border-radius:5px;padding:0 6px}
+.goals{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:8px}
+.goals li{display:flex;gap:12px;align-items:center;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 14px;font-size:15.5px}
+.goals .n{flex:none;width:28px;height:28px;border-radius:50%;background:var(--yellow);color:var(--ink);display:grid;place-items:center;font-family:var(--display)}
+form.start{display:flex;gap:8px;flex-wrap:wrap}
+form.start .big{width:100%}
+form.start input{flex:1;min-width:0;font:inherit;font-size:18px;padding:12px 14px;border-radius:12px;border:2px solid var(--line);background:#0e1324;color:#fff}
+.big{border:3px solid var(--ink);border-radius:14px;background:var(--yellow);color:var(--ink);font-family:var(--display);font-size:21px;padding:10px 22px;box-shadow:0 5px 0 var(--yellow-d)}
+.big:active{transform:translateY(3px);box-shadow:0 2px 0 var(--yellow-d)}
+.ghost{border:2px solid rgba(255,255,255,.35);border-radius:14px;background:transparent;color:#fff;font-family:var(--display);font-size:18px;padding:10px 18px}
+.hint{font-size:13px;color:var(--muted);line-height:1.6}
+.hint kbd{font-family:var(--body);border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:0 5px;color:#dfe3f5}
+
+#gameover{background:radial-gradient(circle at 50% 30%,rgba(120,10,20,.55),rgba(8,8,14,.96) 70%)}
+.goT{font-family:var(--display);font-size:clamp(48px,13vw,80px);line-height:1;color:var(--danger);text-shadow:0 5px 0 #000;letter-spacing:.04em}
+#goH{margin:0;font-family:var(--display);font-weight:400;font-size:24px;color:#fff;text-wrap:balance}
+.lesson{background:var(--paper);color:var(--text);border:3px solid var(--ink);border-radius:16px;padding:16px 18px;font-size:16px;line-height:1.7;word-break:keep-all}
+.lesson b{display:block;font-family:var(--display);font-weight:400;color:var(--danger);font-size:18px;margin-bottom:4px}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+.row .big{flex:1}
+
+#end .sheet{gap:14px}
+#end{background:linear-gradient(180deg,rgba(255,196,120,.35),rgba(20,26,46,.94) 45%)}
+.rules{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rules li{display:flex;gap:10px;font-size:14.5px;line-height:1.55;color:#e4e7f6;word-break:keep-all}
+.rules li::before{content:"✓";flex:none;width:22px;height:22px;border-radius:50%;background:var(--safe);color:#fff;display:grid;place-items:center;font-size:12px;margin-top:1px}
+.stats{display:flex;gap:10px;flex-wrap:wrap}
+.stat{flex:1;min-width:120px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:10px 14px}
+.stat small{display:block;color:var(--muted);font-size:12px}
+.stat b{font-family:var(--display);font-weight:400;font-size:24px;color:var(--yellow);font-variant-numeric:tabular-nums}
+.sos{font-size:14px;color:#dfe3f5;background:rgba(229,72,77,.15);border:1px solid rgba(229,72,77,.4);border-radius:12px;padding:10px 14px;line-height:1.6}
+.sos b{font-family:var(--display);font-weight:400;color:#fff;font-size:17px}
+
+#chat{position:absolute;inset:0;background:radial-gradient(circle at 80% 12%,#3b4680 0,transparent 30%),linear-gradient(180deg,#0b0f22,#151a35);display:flex;justify-content:center;padding-top:16px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#chat .moon{position:absolute;right:12%;top:8%;width:46px;height:46px;border-radius:50%;background:#fff6d6;box-shadow:0 0 40px 10px rgba(255,246,214,.25)}
+.phone{position:relative;width:min(360px,100%);height:calc(100% - 300px);min-height:240px;background:#0a0d18;border-radius:34px;padding:10px;box-shadow:0 0 0 3px #2a3150,0 20px 50px rgba(0,0,0,.6)}
+.scr{position:relative;height:100%;border-radius:26px;overflow:hidden;background:#1c2236;display:flex;flex-direction:column}
+.sbar{display:flex;justify-content:space-between;padding:8px 18px 4px;font-size:12px;color:#c9cfe6;font-variant-numeric:tabular-nums}
+.chead{display:flex;align-items:center;gap:10px;padding:8px 14px;border-bottom:1px solid #2b3352;background:#20273e}
+.chead .av{width:36px;height:36px;border-radius:12px;background:linear-gradient(135deg,#ff7ab8,#7a5cff);display:grid;place-items:center;font-family:var(--display);font-size:17px;color:#fff}
+.chead b{font-family:var(--display);font-weight:400;font-size:16px;color:#fff;display:block}
+.chead small{font-size:11px;color:var(--muted)}
+#msgs{flex:1;overflow-y:auto;padding:14px 12px;display:flex;flex-direction:column;gap:8px}
+.b{max-width:78%;padding:9px 12px;border-radius:16px;font-size:14.5px;line-height:1.5;word-break:keep-all;overflow-wrap:anywhere;animation:pop .25s ease-out}
+.b.them{align-self:flex-start;background:#fff;color:#1d2033;border-top-left-radius:4px}
+.b.me{align-self:flex-end;background:var(--yellow);color:#1d2033;border-top-right-radius:4px}
+.b.note{align-self:center;background:rgba(229,72,77,.18);color:#ffc9cb;font-size:12.5px;border-radius:999px}
+.nm{font-size:11px;color:var(--muted);margin:2px 0 -4px 4px}
+.b.typing{display:flex;gap:4px;padding:12px 14px}
+.b.typing i{width:6px;height:6px;border-radius:50%;background:#9aa2c4;animation:hop .9s infinite}
+.b.typing i:nth-child(2){animation-delay:.15s}.b.typing i:nth-child(3){animation-delay:.3s}
+.off{position:absolute;inset:0;background:#000;opacity:1;transition:opacity .8s;pointer-events:none}
+.phone.on .off{opacity:0}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+@media (max-width:520px){
+  .mission{order:3;flex-basis:100%}
+  #dlg{gap:10px;padding:12px 14px}
+  #dlg .face{width:48px;height:48px;font-size:24px}
+  #dlg .txt{font-size:15.5px}
+  #choices button{font-size:14.5px}
+  #pad{grid-template-columns:repeat(3,50px);grid-template-rows:repeat(3,50px)}
+}
+</style>
+
+<div id="app">
+  <header id="hud">
+    <div class="clock" id="clock">오후 4:15</div>
+    <div class="mission" id="mission"></div>
+    <div class="badges" id="badges"></div>
+  </header>
+  <main id="stage">
+    <canvas id="cv" aria-label="게임 화면"></canvas>
+    <div id="flash"></div>
+    <div id="fade"></div>
+    <div id="pad" hidden>
+      <button class="u" data-d="up" aria-label="위로">▲</button>
+      <button class="l" data-d="left" aria-label="왼쪽으로">◀</button>
+      <button class="r" data-d="right" aria-label="오른쪽으로">▶</button>
+      <button class="d" data-d="down" aria-label="아래로">▼</button>
+    </div>
+    <div id="goal" hidden></div>
+    <div id="toast"></div>
+    <div id="sig" hidden><span class="lamp"></span><span><small>보행 신호</small><b id="sigT"></b></span></div>
+
+    <section id="chat" hidden>
+      <div class="moon"></div>
+      <div class="phone" id="phone">
+        <div class="scr">
+          <div class="sbar"><span>03:00</span><span>배터리 41%</span></div>
+          <div class="chead"><div class="av">줴</div><div><b>줴줴이야</b><small>오픈채팅 · 게임에서 만난 친구</small></div></div>
+          <div id="msgs"></div>
+          <div class="off"></div>
+        </div>
+      </div>
+    </section>
+
+    <div id="dlg" hidden>
+      <div class="face" id="face"><canvas id="faceCv" width="128" height="128"></canvas><span id="faceEm" hidden></span></div>
+      <div class="bodyc">
+        <div class="who" id="who"></div>
+        <p class="txt" id="txt"></p>
+        <div id="choices" hidden></div>
+      </div>
+      <span class="more">클릭 또는 스페이스 ▼</span>
+    </div>
+
+    <div id="sys" hidden>
+      <div class="card" role="dialog" aria-modal="true" aria-labelledby="sysT">
+        <div class="ic">✓</div>
+        <h2 id="sysT">안전!</h2>
+        <p id="sysP"></p>
+        <a class="vid" id="sysV" target="_blank" rel="noopener" hidden></a>
+        <button id="sysB">계속하기</button>
+      </div>
+    </div>
+
+    <div id="tr" hidden>
+      <div>
+        <div class="icons" id="trI"></div>
+        <h2 id="trT"></h2>
+        <p id="trP"></p>
+        <div class="tclock" id="trC"></div>
+        <div class="bar"><i id="trBar"></i></div>
+      </div>
+    </div>
+
+    <div id="gameover" class="over" hidden>
+      <div class="sheet">
+        <div class="goT">GAME OVER</div>
+        <h2 id="goH"></h2>
+        <div class="lesson"><b>⚠️ 이렇게 하면 위험해요</b><span id="goP"></span></div>
+        <a class="vid" id="goV" target="_blank" rel="noopener" hidden></a>
+        <div class="row">
+          <button class="big" id="goRetry">이 장면 다시 하기</button>
+          <button class="ghost" id="goHome">처음부터</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="title" class="over">
+      <div class="sheet">
+        <div class="eyebrow">실종 · 유괴 · 길잃음 예방 교육 게임</div>
+        <h1 class="logo">무사히<br><em>하굣길</em></h1>
+        <div class="zone"><i>SCHOOL ZONE</i>광명중학교 앞 어린이보호구역</div>
+        <div class="hint">이동: <kbd>←</kbd><kbd>↑</kbd><kbd>→</kbd><kbd>↓</kbd> 또는 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd>, 화면의 방향 버튼 · 대화 넘기기: <kbd>스페이스</kbd> 또는 클릭 · 선택지: <kbd>1</kbd><kbd>2</kbd><kbd>3</kbd><br>잘못된 선택을 하면 게임 오버! 그 장면부터 다시 도전할 수 있어요.</div>
+        <form class="start" id="startForm">
+          <button class="big" type="submit">출발하기</button>
+        </form>
+      </div>
+    </div>
+
+    <div id="intro" hidden><video id="introV" playsinline preload="auto"></video><button id="introSnd" type="button" hidden>🔊 소리 켜기</button><button id="introTap" type="button" hidden>▶ 터치해서 시작하기</button></div>
+
+    <div id="end" class="over" hidden>
+      <div class="sheet">
+        <div class="eyebrow">🌞 다음 날 아침 08:40 · 등교 완료</div>
+        <h1 class="logo" style="font-size:clamp(34px,8vw,50px)">모든 위험 상황을<br><em>안전하게 극복했습니다!</em></h1>
+        <p id="endP" style="margin:0;font-size:16px;line-height:1.7;color:#e4e7f6"></p>
+        <div class="stats">
+          <div class="stat"><small>안전 배지</small><b id="stBadge">7 / 7</b></div>
+          <div class="stat"><small>게임 오버</small><b id="stMiss">0번</b></div>
+          <div class="stat"><small>등급</small><b id="stGrade">★★★</b></div>
+        </div>
+        <ul class="rules">
+          <li>길을 물어보는 어른은 직접 데려다주지 말고, 경비실·상가 어른이나 경찰관에게 안내해요.</li>
+          <li>인형 뽑기, 떡볶이처럼 선물·음식으로 꾀는 제안은 거절해요.</li>
+          <li>"부모님이 다치셨다"고 해도 차에 타지 말고 부모님께 직접 전화해서 확인해요.</li>
+          <li>누가 따라오면 멈추지 말고 밝은 큰길이나 가까운 편의점으로 들어가요.</li>
+          <li>낯선 사람이 뜯어서 건네는 음료나 음식은 먹지 않아요.</li>
+          <li>온라인에서 만난 사람의 만남 요구, 특히 밤 시간 요구는 거절하고 차단·신고해요.</li>
+        </ul>
+        <div class="sos"><b>위급할 땐</b> 경찰 <b>112</b> · 실종아동 신고 <b>182</b> · 가까운 <b>편의점</b></div>
+        <button class="big" id="again">처음부터 다시 하기</button>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const stage = $('#stage'), cv = $('#cv'), ctx = cv.getContext('2d');
+const nc = document.createElement('canvas'), nctx = nc.getContext('2d');
+const fcv = $('#faceCv'), fctx = fcv.getContext('2d');
+const RM = matchMedia('(prefers-reduced-motion: reduce)').matches;
+let W = 0, H = 0, T = 56, DPR = 1, Z = 1;
+
+/* ---------- 이름 / 조사 ---------- */
+let N = '00이';
+const hasB = s => { const c = s.charCodeAt(s.length - 1); return c >= 0xAC00 && c <= 0xD7A3 && (c - 0xAC00) % 28 !== 0; };
+const fmt = s => s.replace(/\{N이\}/g, hasB(N) ? N + '이' : N)
+  .replace(/\{N아\}/g, N + (hasB(N) ? '아' : '야'))
+  .replace(/\{N은\}/g, N + (hasB(N) ? '은' : '는'))
+  .replace(/\{N\}/g, N);
+
+/* ---------- 세계 지도 (광명중 → 상가 → 한신아파트 → 철산역 → 학원) ---------- */
+// 걷기: . 인도  , 공원길  y 학교 마당  = 교문  z 횡단보도  p 놀이터  D 학원 문  E 우리집 현관  O 편의점 문
+// 막힘: R 차도  S 광명중 한빛관  Q 예지관  G 체육관  f 운동장  r 트랙  w 담장  K 학교안전지킴이실  M 상가  F 분식집
+//       B 아파트·일반 건물  J·L 큰 건물  H 우리집 동  A 학원  C 편의점  x 지하철 출구  T 나무  g 잔디
+// 교문 앞 길~8차선 사이(23~33행)는 참고 이미지(픽셀 지도)의 건물·공원·골목 배치를 따라 구성
+const WORLD = [
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTRRTT',
+  'TrrrrrrrrrrrTGGGGGTTTTTTTTRRTT',
+  'TrfffffffffrTGGGGGTTTTTTTTRRTT',
+  'TrfffffffffrTGGGGGTTTTTTTTRRTT',
+  'TrfffffffffrTGGGGGTTTTTTTTRRTT',
+  'TrfffffffffrTGGGGGTTTTTTTTRRTT',
+  'TrfffffffffrTGGGGGTTTTTTTTRRTT',
+  'TrfffffffffrTTTTTTTTTTTTTTRRTT',
+  'TrfffffffffrTTTTTTTTTTTTTTRRTT',
+  'TrrrrrrrrrrrTTTTTTTTTTTTTTRRTT',
+  'TTyyyyyyyyyyyyyyyyyyyyTTTTRRTT',
+  'TTQQQQQQQQQQQQQQQQQQQQTTTTRRTT',
+  'TTQQQQQQQQQQQQQQQQQQQQTTTTRRTT',
+  'TTKKyyyyyyyyyyyyyyyyyyTTTTRRTT',
+  'TTKKyyyyyyyyyyyyyyyyyyTTTTRRTT',
+  'TTyyyySSSSSSSSSSSSSSSSTTTTRRTT',
+  'TTyyyySSSSSSSSSSSSSSSSTTTTRRTT',
+  'TTyyyySSSSSSSSSSSSSSSSTTTTRRTT',
+  'ww====wwwwwwwwwwwwwwwwwwwwRRww',
+  '..........................RR..',
+  'RRzzzzRRRRRRRRRRRRRRRRRRRRRRRR',
+  'RRzzzzRRRRRRRRRRRRRRRRRRRRRRRR',
+  'R.......zz................RR..',
+  'R.MMMMMMRR...VVVVVVVVV.MM.RR.M',
+  'R.MMMMMMRR...VVVVVVVVV.MM.RR.M',
+  'R.MMMMMMRR.VVVV........MM.RR.M',
+  'R.ggggggRR.VVVV........MM.RR..',
+  'R.......RR.VVVV........MM.RR..',
+  'R..MMMM.RR.............MM.RR..',
+  'R.......RR.VVVVVVVVVV..MM.RR..',
+  'R.......RR.VVVVVVVVVV..MM.RR..',
+  'R.MMMMM.RR.MMMMMMMMMMMMMM.RR..',
+  'R.MMMMM.RR.MMMMMMMMMMMMMM.RR..',
+  'R.......RR................RR..',
+  'R.......zz......xx........RR..',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRRRRR',
+  '................xx............',
+  'MMMMMMMMMM....MMMMAAAAAAMMMMMM',
+  'MMMMMMMMMM....MMMMAAAAAAMMMMMM',
+  'MMMMMMMMMM....MMMMAAAAAACCCCMM',
+  'MMMMMMMMMM....MMMMAAAAAACCCCMM',
+  'MMMMMMMMMM....MMMMAAAAAACCCCMM',
+  'MMMMMMMMMM....FFFFAADDAACOCCMM',
+  'MMMMMMMMMM..................MM',
+  'MMMMMMMMMM....MMMMMMMMMMMMMMMM',
+  '..............................',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRzzRR',
+  'RRRRRRRRRRzzzzRRRRRRRRRRRRzzRR',
+  '..............................',
+  'MMMMMMMMMMMMMMMMMMMMHHHHHHHHHH',
+  'MMMMMMMMMMMMMMMMMMMMHHHHHHHHHH',
+  'TTTTTTTTTTTTTTTTTTTTTTTTTTTTTT'
+];
+/* 광명중 왼쪽(x<0)으로 이어지는 확장 구역: 광명고등학교와 그 아래 골목·상가. 걸어갈 수는 없고 보이기만 한다.
+   x<-10 은 맨 왼쪽 열을 그대로 이어서 그린다. V 는 아파트, h 는 광명고 건물 */
+const EXTW = 10;
+const EXT = (() => {
+  const rows = [], put = (n, s) => { for (let i = 0; i < n; i++) rows.push(s); };
+  put(8, 'TTTTTTTTTT'); put(4, 'yyyyyyyyyy'); put(5, 'gggghhhhhh'); put(1, 'yyyyyyyyyy'); put(1, 'wwwww===ww');
+  put(1, '..........'); put(2, 'RRRRRRRRRR'); put(1, 'R........R');
+  rows.push('R.MMMMMM.R', 'R.MMMMMM.R', 'R........R', 'R.MMMMMMMR', 'R.gggggggR', 'R.gggggggR', 'R........R',
+            'R...MMMM.R', 'R...MMMM.R', 'RMMMMMMM.R', 'RMMMMMMM.R');
+  put(1, 'R........R'); put(8, 'RRRRRRRRRR'); put(1, '..........'); put(8, 'MMMMMMMMMM'); put(1, '..........');
+  put(2, 'RRRRRRRRRR'); put(1, '..........'); put(2, 'MMMMMMMMMM'); put(1, 'TTTTTTTTTT');
+  return rows;
+})();
+/* 사람이 사라질 때 들어가는 건물 출입문 */
+const DOORS = [[6,23],[2,24],[16,51],[9,50],[14,44]];
+const LABELS = [
+  {x:15.5, y:4, t:'체육관'}, {x:-3.5, y:14, t:'광명고등학교'}, {x:12, y:11.5, t:'광명중학교 예지관 (4층)'}, {x:3, y:13.35, t:'학교안전지킴이', small:true},
+  {x:14, y:16.2, t:'광명중학교 한빛관 (5층)'}, {x:4, y:18.5, t:'교문', small:true},
+  {x:21, y:38.5, t:'왕복 8차선 도로', small:true},
+  {x:5, y:46.5, t:'철산역 상가단지'}, {x:16, y:49.4, t:'분식'},
+  {x:3, y:56.6, t:'철산역 상가단지', small:true},
+  {x:21, y:47.2, t:'하늘수학학원'}, {x:25.5, y:49.4, t:'24시 편의점', small:true}
+];
+const NIGHT_LIGHTS = [[10.5,55.6,3],[15.5,56.2,4.5],[26.5,56,2.4],[27,52.3,2.2],[24.5,55,1.8],[16.5,43.3,4],[20.5,49.8,3.6],[25.5,49,4.6],[12,50,3]];
+const MAPS = {
+  day:   { start:[12,14], dir:'left', goal:'D', clock:16*60+15, traffic:true, mission:['목표','학원까지 마치고 안전히 집에 도착해요.'],
+           npcs:[['grandpa',6,22],['claw',11,46],['tteok',14,50],['parent',11,52]],
+           cars:[{x:7, y:54, dir:'left', color:'#34363d', owner:'parent'}] }, // 건너편 도로가에 세워 둔 차
+  night: { start:[19,50], dir:'right', night:true, clock:21*60, lights:NIGHT_LIGHTS, mission:['목표','학원까지 마치고 안전히 집에 도착해요.'],
+           npcs:[['follow',11,50],['yakult',12,43]] },
+  /* 새벽 놀이터: 걸어 다니는 지도가 아니라 흙바닥과 놀이기구만 있는 별도 장면 */
+  out:   { start:[5,6], dir:'right', night:true, clock:3*60+5, lights:[[7,5.5,6.5],[13,6,4],[14.5,3,3.5]], mission:['새벽 3:05','몰래 집을 나왔다…'], npcs:[] },
+  morning:{ start:[16,33], dir:'up', morning:true, clock:8*60+40, mission:['목표 ③','무사히 등교하기'], npcs:[] }
+};
+/* 신호등: 30초마다 보행 신호가 초록 ↔ 빨강 */
+const CYCLE = 60000, GREEN = 30000, LANES = [35,36,37,38,39,40,41,42];
+const CAR_COLORS = ['#e24b3b','#3b6fd6','#f2f2f2','#2b2d33','#f2b630','#7a8796','#2fa36b','#8a4fd1'];
+let traffic = [], laneNext = {}, sigT0 = 0, schoolNext = 0, afterResolve = null;
+const SCHOOL_Y = 21; // 학교 앞 도로: 10초에 1대, 한쪽(→)으로만 지나간다
+const pedGreen = now => ((now - sigT0) % CYCLE) < GREEN;
+const sigLeft = now => { const t = (now - sigT0) % CYCLE; return Math.ceil(((t < GREEN ? GREEN : CYCLE) - t) / 1000); };
+
+/* ---------- 등장인물 생김새 ---------- */
+const LOOKS = {
+  kid:     {skin:'#f7d5b5', hair:'#2a1e17', hs:'short', top:'#34508a', pants:'#2b2f45', h:1, bag:true},
+  grandpa: {skin:'#efc9a4', hair:'#d6d6d6', hs:'short', top:'#8a6f4e', pants:'#55555f', h:1.08, cane:true, glasses:true},
+  claw:    {skin:'#f0c7a0', hair:'#1b1b1b', hs:'cap', cap:'#2d2d2d', top:'#d64545', pants:'#3b5b8c', h:1.2},
+  tteok:   {skin:'#f3cfaa', hair:'#3a2a20', hs:'short', top:'#6aa0d8', pants:'#c9b48a', h:1.18, glasses:true},
+  parent:  {skin:'#e8bf98', hair:'#151515', hs:'short', top:'#3d4049', pants:'#23252b', h:1.22, beard:true},
+  follow:  {skin:'#c9a283', hair:'#111', hs:'hood', top:'#23252f', pants:'#121318', h:1.24, mask:'#111'},
+  yakult:  {skin:'#f3cfaa', hair:'#4a3020', hs:'visor', cap:'#efe3c4', top:'#e2d3a8', pants:'#8b7a55', h:1.08, drink:true},
+  jeje:    {skin:'#e6bd96', hair:'#222', hs:'hood', top:'#7b7f8c', pants:'#2a2c33', h:1.25, mask:'#e9e9ee'},
+  clerk:   {skin:'#f1cba5', hair:'#2d241e', hs:'short', top:'#2fa36b', pants:'#333', h:1.15},
+  guard:   {skin:'#e9c29c', hair:'#5a5a5a', hs:'cap', cap:'#24345c', top:'#2f4f8a', pants:'#26314a', h:1.16}
+};
+/* 학교안전지킴이 아저씨: 지킴이실 앞 (낮·아침 장면) */
+const GUARD = { x:3, y:15 };
+const guardOn = () => !M.night;
+let guardSaid = false;
+
+/* ---------- 상황 ---------- */
+const ME = '@me';
+const DANGER_LURE = '호의나 선물을 빌미로 유인하는 것에 절대로 응해서는 안 됩니다.';
+const SAFE_LURE = '낯선 사람이 제공하는 호의나 선물, 맛있는 음식 제안은 거절해야 합니다.';
+const CHASE_LESSON = '누가 따라올 때는 멈추거나 어두운 쪽으로 가지 말고, 밝고 사람이 많은 큰길이나 가까운 편의점으로 곧장 들어가야 합니다.';
+const ENC = {
+  grandpa: { name:'할아버지',
+    leave:[[6,23]],
+    lines:[
+      {who:'상황', text:'오후 4시 15분, 광명중학교 교문을 나와 길 건너 상가 앞을 지날 때 한 할아버지가 다가온다.'},
+      {who:'할아버지', text:'아이고, 학생! 잠시만 이것 좀 물어봅시다. 내가 아들내미 집에 가야하는데 눈이 어두워서 길을 잘 모르겠네. 내가 어딘지 얘기해주면 좀 직접 데려다줄 수 있겠나?'}],
+    choices:[
+      {text:'"네, 할아버지. 제가 거기까지 같이 걸어가면서 안내해 드릴게요."', kind:'danger', fail:'together', path:[[1,22],[1,24],[2,24]],
+        go:'할아버지를 따라 한적한 곳으로 가고 말았어요',
+        result:[{who:'할아버지', text:'고마워라, 착한 학생이네. 이쪽인거같은데...'}],
+        sys:'어른이 길을 물어볼 때는 직접 따라가지 않고, 근처 경비실이나 상가, 경찰관 등 다른 어른에게 도움을 받도록 안내해야 합니다.'},
+      {text:'"죄송하지만 저도 잘 몰라서요. 저기 상가 안이나 경비실에 계신 어른께 여쭤보세요!"', kind:'safe',
+        result:[{who:'할아버지', text:'요즘 젊은 것들은...쯧 그거 길 알려주는게 뭐가 어렵다고! 엣헴..'}],
+        sys:'어른의 길 안내 요청이더라도 낯선 사람을 따라가거나 한적한 곳으로 이동해서는 안 됩니다.', video:'WLeMYCiNtn8'}]},
+  claw: { name:'낯선 남자',
+    leave:[[16,51]],
+    lines:[
+      {who:'상황', text:'신호를 지켜 큰길을 건넌 뒤 철산역 상가단지 골목을 지날 때, 한 삼촌 또래의 남성이 다가온다.'},
+      {who:'낯선 남자', text:'어이 학생! 혹시 저기 새로 생긴 오락실 알아? 내가 인형 뽑기 코인 엄청 많은데 같이 가서 뽑아볼래? 갖고 싶은 거 다 뽑아줄게!'}],
+    choices:[
+      {text:'"우와, 정말요? 인형 뽑기 좋아하는 데 같이 가요!"', kind:'danger', fail:'together', path:[[16,51]],
+        go:'인형 뽑기에 끌려 낯선 남자를 따라갔어요',
+        result:[{who:'낯선 남자', text:'그치? 오락실은 저 뒤쪽 골목에 있어. 따라와~'}], sys:DANGER_LURE},
+      {text:'"아니요, 괜찮습니다. 학원 늦어서 가봐야 해요."', kind:'safe',
+        result:[{who:'낯선 남자', text:'아… 그래? 그럼 어쩔 수 없지.'}], sys:SAFE_LURE, video:'J66QUSwft8o'}]},
+  tteok: { name:'낯선 남자',
+    leave:[[16,51]],
+    lines:[
+      {who:'상황', text:'상가단지 분식집 앞을 지나는데, 처음 보는 남자가 다가와 말을 건다.'},
+      {who:'낯선 남자', text:'오빠가 떡볶이가 먹고싶은데, 혼자 민망해서, 같이 먹어줄 수 있어? 오빠가 사줄게...'},
+      {who:ME, text:'와, 오늘 무슨 재수 옴붙었나... 왜 이렇게 이상한 사람들이 많지?'}],
+    choices:[
+      {text:'"저 떡볶이 좋아하는 데 같이 가요! 대신 사주시는거에요."', kind:'danger', fail:'together', path:[[16,51]],
+        go:'떡볶이를 사 준다는 말에 따라가고 말았어요',
+        result:[{who:'낯선 남자', text:'그래그래, 여기 말고 오빠가 아는 데가 있어. 이쪽으로 와~'}], sys:DANGER_LURE},
+      {text:'"아니요, 괜찮습니다. 학원 늦어서 가봐야 해요."', kind:'safe',
+        result:[{who:'낯선 남자', text:'아… 그래? 그럼 어쩔 수 없지.'}], sys:SAFE_LURE}]},
+  parent: { name:'낯선 아저씨', car:true,
+    lines:[
+      {who:'상황', text:'상가단지 골목을 걸어가는데, 도로 건너편에 세워 둔 차 쪽에서 온 듯한 아저씨가 급하게 다가와 이름을 부른다.'},
+      {who:'낯선 아저씨', text:'어! 너 {N이} 맞지? 나 너네 동네 사는 부모님 친구야! 지금 큰일 났다. 너네 부모님이 교통사고로 병원에 입원하셨어! 내가 차 타고 가기로 했으니까 빨리 차에 타, 같이 가자!'}],
+    choices:[
+      {text:'"네? 부모님이요?! 차 어디 있어요? 빨리 가요!"', kind:'danger', fail:'car',
+        go:'낯선 사람의 차에 타고 말았어요',
+        result:[{who:'낯선 아저씨', text:'그래, 차는 저 건너편에 세워놨어. 빨리 건너가서 타!'}],
+        sys:'부모님이나 가족에게 사고가 났다고 하더라도 당황하지 않고 직접 확인해야 합니다. 계획 납치를 위해, 당신의 개인정보를 미리 파악했을 수 있습니다. 낯선 사람의 차에 타면 안 됩니다.'},
+      {text:'"잠시만요, 저희 부모님께 먼저 전화해 볼게요." (또는 선생님·경찰에 확인)', kind:'safe',
+        result:[
+          {who:'낯선 아저씨', text:'(당황하며) 어… 어… 급하니까 전화는 가면서 해!'},
+          {who:ME, text:'아니요, 직접 통화해보고 확인할게요. 안 그러면 따라갈 수 없어요.'},
+          {who:'상황', text:'(전화를 걸자 엄마가 바로 받았다. "엄마 지금 회사야! 아무도 따라가지 마!" 아저씨는 허둥지둥 차에 올라탔다.)'}],
+        sys:'이름을 알고 있거나 부모님 지인이라고 주장하더라도, 직접 부모님과 통화하여 사실 여부를 먼저 확인해야 합니다.', video:'LYzA6XzTpVg'}]},
+  follow: { name:'???', event:true,
+    lines:[
+      {who:'상황', text:'밤 9시, 학원이 끝나고 지하철역으로 가는 어두운 상가단지 뒷길. 뒤에서 발자국 소리가 계속 따라온다. 뒤를 살짝 돌아보니 한 남성이 일정한 거리를 두고 따라오고 있다.'},
+      {who:'시스템', text:'뒤에서 누군가 계속 따라오고 있습니다! 길은 어둡고 조용합니다. 어떻게 행동해야 할까요?'}],
+    choices:[
+      {text:'골목길에서 소리를 지르며 무작정 앞으로 뛰어 도망친다.', kind:'danger', fail:'catch',
+        go:'어두운 골목에서 붙잡히고 말았어요',
+        result:[{who:'상황', text:'(정신없이 뛰었지만 길이 어두워 앞이 잘 보이지 않는다. 발소리가 점점 빨라진다…)'}],
+        sys:'막다른 골목이 나오거나 상대방이 쫓아올 위험이 있습니다. 어두운 골목보다는 사람이 많은 곳으로 이동해야 합니다.'},
+      {text:'즉시 방향을 틀어 사람이 많고 밝은 대로변(또는 24시 편의점)으로 들어간다.', kind:'safe', chase:true,
+        result:[{who:ME, text:'(학원 바로 옆, 상가단지 안에 불이 환한 편의점이 있어. 저기로 들어가자!)'}],
+        store:[
+          {who:ME, text:'(편의점으로 들어가며) 사장님, 뒤에 어떤 사람이 계속 따라와서 무서워요. 도와주세요!'},
+          {who:'편의점 사장님', text:'저런, 많이 놀랐지? 여기 있으면 안전해. 경찰에 신고하고 부모님께도 바로 연락해 줄게.'},
+          {who:'상황', text:'(따라오던 남자는 편의점 밖에서 서성이다가 어둠 속으로 사라졌다. 엄마와 통화하며 밝은 큰길을 따라 지하철역으로 향한다.)'}],
+        sys:'야간 미행을 느꼈을 때는 밝고 사람이 많은 상가나 가까운 편의점으로 피신한 뒤 부모님이나 경찰에 연락합니다.'},
+      {text:'뒤를 돌아보고 "왜 따라오세요?"라고 소리치며 대치한다.', kind:'danger', fail:'catch',
+        go:'정면으로 맞서다 붙잡히고 말았어요',
+        result:[{who:'상황', text:'(남자가 대답 없이 성큼성큼 다가온다…)'}],
+        sys:'범인과 직접 대치하는 것은 위협에 노출될 수 있으므로 절대 피해야 합니다.'}]},
+  yakult: { name:'야쿠르트 아줌마?',
+    leave:[[14,44]],
+    lines:[
+      {who:'상황', text:'지하철 2번 출구 앞에 다다랐을 때, 야쿠르트 아줌마 유니폼을 입은 여성이 다가온다. 하지만 근처에 전동 카트나 배달 가방이 보이지 않는다.'},
+      {who:'야쿠르트 아줌마?', text:'아휴, 우리 학생 이 밤중에 공부하고 오느라 고생이 참 많네~ 착하기도 하지. 자, 이거 시원하게 한 잔 마시면서 피로 좀 풀어!'},
+      {who:'상황', text:'(빨대가 이미 꽂혀 있는 요구르트를 건넨다.)'}],
+    choices:[
+      {text:'"아, 감사합니다! 잘 마실게요."', kind:'danger', fail:'drink',
+        go:'수상한 음료를 마시고 정신을 잃었어요',
+        result:[{who:'가짜 야쿠르트 아줌마', text:'그래, 빨대 꽂아놨으니까 한 번에 다 마셔~'}, {who:'상황', text:'(한 모금 마시자 갑자기 눈앞이 빙글빙글 돈다…)'}],
+        sys:'카트가 없는 의심스러운 상황이며, 개봉되어 있거나 빨대가 꽂힌 음료에는 의심스러운 약물이 들어있을 수 있습니다.'},
+      {text:'"아니요, 마음만 받을게요. 괜찮습니다." 하고 건네받지 않는다.', kind:'safe',
+        result:[
+          {who:'가짜 야쿠르트 아줌마', text:'에이, 건네주는데 그냥 마시지... (주춤거린다)'},
+          {who:ME, text:'(속마음) \'아줌마 카트도 없고, 이미 뜯어진 요구르트라 이상해. 빨리 지하철을 타자.\''}],
+        sys:'낯선 사람이 개봉하여 건네는 음료나 음식은 절대 섭취해서는 안 됩니다.'}]}
+};
+const CHAT_FAIL = '온라인에서 만난 사람은 실제 신원을 알 수 없으며, 특히 심야 시간대 오프라인 만남 유도는 매우 위험한 범죄로 이어질 수 있습니다.';
+const BADGES = [['grandpa','길 안내 요청'],['claw','인형 뽑기'],['tteok','떡볶이'],['parent','부모님 사고'],['follow','밤길 미행'],['yakult','뜯긴 음료'],['chat','새벽 만남']];
+
+/* ---------- 상태 ---------- */
+const P = { x:0, y:0, fx:0, fy:0, ox:0, oy:0, t:1, dir:'down', phase:0, moving:false, hidden:false, script:null };
+let M = null, npcs = [], cars = [], mode = 'title', steps = 0, held = null, autoQ = [], autoCb = null;
+let cleared = new Set(), overs = 0, chase = null, camLock = null, cine = null, cp = null, timers = [];
+const DIRS = { up:[0,-1], down:[0,1], left:[-1,0], right:[1,0] };
+const WALK = new Set(['.', ',', '=', 'D', 'E', 'y', 'z', 'O', 'p']);
+
+const later = (fn, ms) => { timers.push(setTimeout(fn, ms)); };
+function resetCine(){
+  timers.forEach(clearTimeout); timers = [];
+  camLock = null; cine = null; Z = 1; P.hidden = false; P.script = null;
+  cv.style.filter = ''; $('#fade').classList.remove('on');
+}
+function loadMap(key){
+  const def = MAPS[key];
+  resetCine();
+  M = { ...def, key, grid: WORLD.map(r => r.split('')) };
+  npcs = (def.npcs || []).filter(([id]) => !cleared.has(id)).map(([id, x, y]) => ({
+    enc:id, tx:x, ty:y, x, y, dir:'down', phase:0, path:[], speed:2.4, event:!!ENC[id].event, state:'stalk', next:0, look:LOOKS[id] }));
+  cars = (def.cars || []).filter(c => !cleared.has(c.owner)).map(c => ({ ...c, path:[], speed:4 }));
+  P.x = P.fx = P.ox = def.start[0]; P.y = P.fy = P.oy = def.start[1]; P.t = 1; P.dir = def.dir || 'down';
+  steps = 0; autoQ = []; autoCb = null; chase = null; guardSaid = false;
+  traffic = []; laneNext = {}; afterResolve = null; schoolNext = performance.now() + 2500 + Math.random() * 3000;
+  if (def.traffic) sigT0 = performance.now() - CYCLE / 2;
+  $('#mission').innerHTML = `<b>${def.mission[0]}</b>${def.mission[1]}`;
+  setGoal(key === 'day' ? '수학학원으로 가자' : key === 'night' ? '철산역 2번 출구를 통해 집으로 가자' : '');
+  updateClock();
+}
+/* 지도 바깥은 검은색(K). 놀이터 장면: 흙밭(s) 오른쪽 끝에 차도(R)가 이어진다 */
+const tileAt = (x, y) => {
+  if (M.key === 'out') return (x < -4 || x > 15 || y < 0 || y > 11) ? '0' : x >= 14 ? 'R' : 's';
+  if (!M.grid[y]) return '0';
+  if (x < 0) return x < -EXTW ? '0' : EXT[y][x + EXTW];
+  if (x > 29) return '0';
+  return M.grid[y][x] || '0';
+};
+const npcAt = (x, y) => (guardOn() && x === GUARD.x && y === GUARD.y) || npcs.find(n => n.tx === x && n.ty === y && !n.done && !n.gone && !n.event);
+const walkable = (x, y) => x >= 0 && x <= 29 && WALK.has(tileAt(x, y)) && !npcAt(x, y);
+
+function fmtTime(m){
+  m = ((m % 1440) + 1440) % 1440;
+  const h = Math.floor(m / 60), mm = String(m % 60).padStart(2, '0');
+  const pre = h < 6 ? '새벽' : h < 12 ? '오전' : h < 18 ? '오후' : '밤';
+  return `${pre} ${(h % 12) || 12}:${mm}`;
+}
+function updateClock(override){ $('#clock').textContent = override || fmtTime(M.clock + Math.floor(steps / 3)); }
+function renderBadges(){
+  $('#badges').innerHTML = `<span class="lab">안전 ${cleared.size}/7</span>` +
+    BADGES.map(([id, l]) => `<span class="bd${cleared.has(id) ? ' on' : ''}" title="${l}">✓</span>`).join('');
+}
+
+/* ---------- 이동 ---------- */
+function tryStep(dir){
+  P.dir = dir;
+  const [dx, dy] = DIRS[dir], nx = P.x + dx, ny = P.y + dy;
+  if (tileAt(nx, ny) === 'x' && mode === 'walk') { subwayWarn(); return false; }
+  if (mode === 'walk' && M.key === 'day' && nx <= 0 && ny >= 19 && ny <= 34 && !walkable(nx, ny)) { limitWarn(); return false; }
+  if (!walkable(nx, ny)) return false;
+  if (M.traffic && tileAt(nx, ny) === 'z' && ny >= 35 && ny <= 42 && (P.y === 34 || P.y === 43))
+    cp = { kind:'road', map:M.key, px:P.x, py:P.y, dir:P.dir, steps };
+  if (M.traffic && tileAt(nx, ny) === 'z' && ny === 20 && P.y === 19)
+    cp = { kind:'road', school:true, map:M.key, px:P.x, py:P.y, dir:P.dir, steps };
+  P.ox = P.x; P.oy = P.y; P.x = nx; P.y = ny; P.t = 0;
+  return true;
+}
+function bfsFrom(from, to){
+  const key = (x, y) => x + ',' + y, prev = new Map([[key(from[0], from[1]), null]]), q = [from];
+  let found = false;
+  while (q.length) {
+    const [x, y] = q.shift();
+    if (x === to[0] && y === to[1]) { found = true; break; }
+    for (const [d, [dx, dy]] of Object.entries(DIRS)) {
+      const nx = x + dx, ny = y + dy, k = key(nx, ny);
+      if (prev.has(k)) continue;
+      if (!(walkable(nx, ny) || (nx === to[0] && ny === to[1]))) continue;
+      prev.set(k, [x, y, d]); q.push([nx, ny]);
+    }
+  }
+  if (!found) return [];
+  const path = []; let k = key(to[0], to[1]);
+  while (prev.get(k)) { const [px, py, d] = prev.get(k); path.unshift(d); k = key(px, py); }
+  return path;
+}
+function autoTo(to, cb){ autoQ = bfsFrom([P.x, P.y], to); autoCb = cb; mode = 'auto'; setPad(); }
+function setScript(path, speed, cb, fade){
+  P.script = { a:{ x:P.fx, y:P.fy, dir:P.dir, phase:P.phase, path:path.map(p => p.slice()), speed, doorFade:!!fade }, cb };
+}
+function stepPath(a, dt){
+  if (!a.path || !a.path.length) return;
+  const [tx, ty] = a.path[0], dx = tx - a.x, dy = ty - a.y, d = Math.hypot(dx, dy), st = a.speed * dt / 1000;
+  if (d > 0.001) { if (Math.abs(dx) > Math.abs(dy)) a.dir = dx > 0 ? 'right' : 'left'; else a.dir = dy > 0 ? 'down' : 'up'; }
+  if (d <= st) { a.x = tx; a.y = ty; a.path.shift(); } else { a.x += dx / d * st; a.y += dy / d * st; }
+  a.phase += dt * .028;
+  /* 건물 안으로 들어가는 사람은 마지막 한 칸에서 서서히 사라진다 */
+  if (a.doorFade) { if (!a.path.length) a.alpha = 0; else if (a.path.length === 1) a.alpha = Math.min(1, Math.hypot(a.path[0][0] - a.x, a.path[0][1] - a.y) / .8); }
+  if (!a.path.length && a.onDone) { const f = a.onDone; a.onDone = null; f(); }
+}
+const dirsToPts = (from, dirs) => { let x = from[0], y = from[1]; return dirs.map(d => { x += DIRS[d][0]; y += DIRS[d][1]; return [x, y]; }); };
+/* 길을 따라 건물 출입문 앞까지 걸어간 뒤 문 안으로 들어가는 경로 */
+function routeToDoor(n, door){
+  const from = [n.tx, n.ty]; let best = null;
+  for (const [dx, dy] of Object.values(DIRS)) {
+    const t = [door[0] + dx, door[1] + dy];
+    if (t[0] === from[0] && t[1] === from[1]) { best = []; break; }
+    if (!walkable(t[0], t[1])) continue;
+    const d = bfsFrom(from, t);
+    if (d.length && (!best || d.length < best.length)) best = d;
+  }
+  return best ? [...dirsToPts(from, best), door] : [door];
+}
+/* 상가단지 골목에서 건너편 도로에 세워 둔 차까지 가는 경로 */
+function routeToCar(n){
+  const from = [n.tx, n.ty], d = bfsFrom(from, [11, 52]);
+  const pts = (from[0] === 11 && from[1] === 52) ? [] : dirsToPts(from, d);
+  return [...pts, [11, 53], [11, 54.5], [8.8, 54.5]];
+}
+/* 근처를 지나가면 NPC가 학생 바로 앞까지 직접 걸어온다 */
+function approach(n){
+  mode = 'approach'; setPad(); held = null; n.alert = true; n.engaged = true;
+  const dirs = bfsFrom([n.tx, n.ty], [P.x, P.y]);
+  dirs.pop();
+  const pts = dirsToPts([n.tx, n.ty], dirs);
+  if (!pts.length) { later(() => startEnc(n), 250); return; }
+  n.tx = pts[pts.length - 1][0]; n.ty = pts[pts.length - 1][1];
+  n.speed = 3.4; n.path = pts; n.onDone = () => startEnc(n);
+}
+const faceTo = (n, x, y) => { const dx = x - n.x, dy = y - n.y; n.dir = Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'right' : 'left') : (dy > 0 ? 'down' : 'up'); };
+
+let jay = null, lastSide = null;
+function onArrive(){
+  steps++; updateClock();
+  if (mode !== 'walk') return;
+  if (M.traffic) {
+    if (P.y === 34 || P.y === 43) {
+      if (jay && jay.from !== P.y) {
+        const j = jay; jay = null; mode = 'dialog'; setPad(); held = null;
+        return runLines([{ who:'시스템', text:'무단횡단은 하면 안됩니다. 다시 건너세요!!!' }], () => {
+          dlg.hidden = true; P.x = P.fx = P.ox = j.x; P.y = P.fy = P.oy = j.from; P.t = 1; P.dir = j.from === 34 ? 'down' : 'up';
+          mode = 'walk'; setPad();
+        });
+      }
+      jay = null; lastSide = { x:P.x, y:P.y };
+    } else if (!jay && lastSide && P.y >= 35 && P.y <= 42 && !pedGreen(performance.now())) jay = { from:lastSide.y, x:lastSide.x };
+  }
+  if (guardOn() && !chase) {
+    /* 지킴이 아저씨는 먼저 말을 걸지 않고, 바로 앞에 서면 말을 건다 */
+    const gd = Math.abs(P.x - GUARD.x) + Math.abs(P.y - GUARD.y);
+    if (gd <= 1) { if (!guardSaid) { guardSaid = true; return talkGuard(); } } else if (gd >= 3) guardSaid = false;
+  }
+  if (chase) {
+    if (tileAt(P.x, P.y) === 'O') return reachStore();
+    if (Math.abs(chase.n.tx - P.x) + Math.abs(chase.n.ty - P.y) <= 1) return caught(chase.n);
+    return;
+  }
+  if (tileAt(P.x, P.y) !== 'z') for (const n of npcs) {
+    if (n.done || n.gone || n.event || n.engaged) continue;
+    if (Math.max(Math.abs(n.ty - P.y), Math.abs(n.tx - P.x)) <= 4 && bfsFrom([n.tx, n.ty], [P.x, P.y]).length <= 9) { approach(n); return; }
+  }
+  const f = npcs.find(n => n.event && !n.done && n.state === 'stalk');
+  if (f) {
+    if (steps === 1) toast('저벅… 저벅… 뒤에서 발소리가 들리는 것 같다', 2800);
+    if (steps >= 3) { f.state = 'wait'; startEnc(f); return; }
+  }
+  if (M.goal && tileAt(P.x, P.y) === M.goal) onGoal();
+}
+
+/* ---------- 미행하는 사람 ---------- */
+function followerLogic(now){
+  for (const n of npcs) {
+    if (!n.event || n.done || n.gone || !(n.state === 'stalk' || n.state === 'chase')) continue;
+    if (mode !== 'walk' || n.path.length || now < n.next) continue;
+    const iv = n.state === 'chase' ? 280 : 340;
+    n.next = now + iv;
+    if (n.state === 'chase' && now < chase.start) continue;
+    const r = bfsFrom([n.tx, n.ty], [P.x, P.y]);
+    if (r.length > (n.state === 'stalk' ? 3 : 1)) {
+      const [dx, dy] = DIRS[r[0]]; n.tx += dx; n.ty += dy;
+      n.path = [[n.tx, n.ty]]; n.speed = 1000 / iv * 1.05;
+    }
+    if (n.state === 'chase' && Math.abs(n.tx - P.x) + Math.abs(n.ty - P.y) <= 1) caught(n);
+  }
+}
+
+/* ---------- 대화 UI ---------- */
+const dlg = $('#dlg'), txt = $('#txt'), ui = { typing:false, tid:0, full:'', next:null, look:null, choices:false, sys:false };
+function drawPortrait(look){
+  fctx.clearRect(0, 0, 128, 128);
+  drawPerson(fctx, 64, 100, 128, 'down', false, 0, look, 1, true);
+}
+function setLine(l, instant){
+  const who = l.who === ME ? N : l.who;
+  $('#who').textContent = who;
+  const look = l.who === ME ? LOOKS.kid : l.who === '편의점 사장님' ? LOOKS.clerk : (l.who === '상황' || l.who === '시스템') ? null : (l.look || ui.look);
+  if (look) { $('#faceEm').hidden = true; fcv.hidden = false; drawPortrait(look); }
+  else { fcv.hidden = true; $('#faceEm').hidden = false; $('#faceEm').textContent = l.who === '시스템' ? '📢' : '📍'; }
+  dlg.dataset.kind = l.who === '상황' ? 'nar' : l.who === '시스템' ? 'sys' : '';
+  dlg.hidden = false;
+  const s = fmt(l.text);
+  clearInterval(ui.tid); ui.full = s;
+  if (instant || RM) { txt.textContent = s; ui.typing = false; dlg.classList.remove('typing'); return; }
+  let i = 0; ui.typing = true; dlg.classList.add('typing'); txt.textContent = '';
+  ui.tid = setInterval(() => { i += 1; txt.textContent = s.slice(0, i); if (i >= s.length) finishType(); }, 26);
+}
+function finishType(){ clearInterval(ui.tid); txt.textContent = ui.full; ui.typing = false; dlg.classList.remove('typing'); }
+function runLines(lines, cb){
+  let i = 0;
+  const next = () => {
+    if (i >= lines.length) { ui.next = null; cb && cb(); return; }
+    setLine(lines[i++]); ui.next = next;
+  };
+  next();
+}
+function advance(){
+  if (ui.choices || ui.sys || dlg.hidden) return;
+  if (ui.typing) { finishType(); return; }
+  if (ui.next) ui.next();
+}
+dlg.addEventListener('click', e => { if (!e.target.closest('#choices')) advance(); });
+
+function shuffle(a){ a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; }
+function showChoices(list, onPick){
+  const box = $('#choices'); box.innerHTML = '';
+  list.forEach((c, i) => {
+    const b = document.createElement('button');
+    b.innerHTML = `<span class="k">${'ABC'[i]}</span><span></span>`;
+    b.lastChild.textContent = fmt(c.text);
+    b.onclick = () => pick(i);
+    box.appendChild(b);
+  });
+  const pick = i => { if (!ui.choices) return; ui.choices = false; box.hidden = true; dlg.classList.remove('ask'); onPick(list[i]); };
+  ui.pick = pick; ui.nChoices = list.length;
+  ui.choices = true; box.hidden = false; dlg.classList.add('ask');
+  setTimeout(() => box.firstChild && box.firstChild.focus({ preventScroll:true }), 30);
+}
+/* 유튜브 영상 섬네일 링크 (누르면 새 탭에서 영상이 열린다) */
+function setVideo(el, id){
+  if (!id) { el.hidden = true; el.innerHTML = ''; return; }
+  el.href = 'https://www.youtube.com/watch?v=' + id;
+  el.innerHTML = `<span class="ph">📺 안전 교육 영상</span><img src="https://i.ytimg.com/vi/${id}/hqdefault.jpg" alt="" loading="lazy" onerror="this.remove()"><span class="pl">▶</span><span class="cap">▶ 관련 안전 교육 영상 보기 (새 창)</span>`;
+  el.hidden = false;
+}
+function showSys(text, btn, cb, title, video){
+  setVideo($('#sysV'), video);
+  $('#sysT').textContent = title || '안전!';
+  $('#sysP').textContent = fmt(text);
+  $('#sysB').textContent = btn;
+  ui.sys = true; $('#sys').hidden = false;
+  $('#sysB').onclick = () => { ui.sys = false; $('#sys').hidden = true; cb(); };
+  setTimeout(() => $('#sysB').focus({ preventScroll:true }), 30);
+}
+function hurt(){
+  const f = $('#flash'); f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 900);
+  if (!RM) { stage.classList.remove('hit'); void stage.offsetWidth; stage.classList.add('hit'); }
+}
+let toastT = 0;
+function setGoal(t){ const g = $('#goal'); if (!t) { g.hidden = true; return; } g.textContent = '💬 ' + t; g.hidden = false; }
+function toast(s, ms = 2600){ const t = $('#toast'); t.textContent = s; t.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove('on'), ms); }
+function zoomTo(to, dur){ cine = { from:Z, to, t0:performance.now(), dur }; }
+
+/* ---------- 게임 오버 ---------- */
+function endScene(title, lesson, delay, video){
+  later(() => { $('#fade').classList.add('on'); later(() => gameOver(title, lesson, video), 950); }, delay);
+}
+function gameOver(title, lesson, video){
+  setVideo($('#goV'), video);
+  mode = 'over'; setPad(); overs++;
+  dlg.hidden = true;
+  $('#goH').textContent = title; $('#goP').textContent = fmt(lesson);
+  $('#gameover').hidden = false;
+  setTimeout(() => $('#goRetry').focus({ preventScroll:true }), 30);
+}
+$('#goRetry').onclick = () => {
+  $('#gameover').hidden = true;
+  if (!cp || cp.kind === 'chat') { loadMap('night'); P.x = P.fx = 26; P.y = P.fy = 55; startChat(); return; }
+  loadMap(cp.map);
+  P.x = P.fx = P.ox = cp.px; P.y = P.fy = P.oy = cp.py; P.dir = cp.dir; steps = cp.steps; updateClock();
+  if (cp.kind === 'road') { mode = 'walk'; setPad(); toast(cp.school ? '신호등이 없어도 좌우를 살피고, 차가 지나간 뒤에 건너요!' : '보행 신호가 초록불일 때 건너요!', 3000); return; }
+  const n = npcs.find(n => n.enc === cp.enc);
+  if (cp.fpos) { n.tx = n.x = cp.fpos[0]; n.ty = n.y = cp.fpos[1]; n.state = 'wait'; }
+  startEnc(n);
+};
+$('#goHome').onclick = restart;
+
+/* ---------- 상황 진행 ---------- */
+function startEnc(n){
+  const e = ENC[n.enc];
+  cp = { kind:'enc', map:M.key, px:P.x, py:P.y, dir:P.dir, steps, enc:n.enc, fpos:n.event ? [n.tx, n.ty] : null };
+  mode = 'dialog'; setPad(); held = null;
+  n.alert = true; n.engaged = true; ui.look = n.look; faceTo(n, P.x, P.y);
+  if (n.event) P.dir = n.tx < P.x ? 'left' : 'right';
+  else { const ex = n.tx - P.x, ey = n.ty - P.y; P.dir = Math.abs(ex) >= Math.abs(ey) ? (ex > 0 ? 'right' : 'left') : (ey > 0 ? 'down' : 'up'); }
+  afterResolve = n.enc === 'follow' ? walkToStation : n.enc === 'yakult' ? subwayHome : null;
+  runLines(e.lines, () => ask(e, n));
+}
+function ask(e, n){
+  showChoices(shuffle(e.choices), c => {
+    runLines(c.result.map(r => ({ ...r })), () => {
+      if (c.kind === 'safe') {
+        if (c.chase) startChase(e, n, c);
+        else showSys(c.sys, '계속 걷기', () => resolve(e, n), undefined, c.video);
+      } else failScene(e, n, c);
+    });
+  });
+}
+function resolve(e, n){
+  cleared.add(n.enc); renderBadges();
+  n.done = true; n.alert = false;
+  dlg.hidden = true; mode = 'walk'; setPad();
+  toast(`안전 배지 획득! (${cleared.size}/7)`);
+  if (e.car) {
+    const car = cars[0];
+    n.speed = 2; n.path = routeToCar(n);
+    n.onDone = () => { n.hidden = true; later(() => { car.speed = 3.5; car.path = [[-14, 54]]; car.onDone = () => car.gone = true; }, 400); };
+  } else if (n.event) {
+    n.state = 'leave'; n.speed = 2.2; n.path = routeToDoor(n, [9, 50]); n.doorFade = true; n.onDone = () => n.gone = true;
+  } else {
+    n.speed = 2.3; n.path = routeToDoor(n, e.leave[e.leave.length - 1]); n.doorFade = true; n.onDone = () => n.gone = true;
+  }
+  if (afterResolve) { const f = afterResolve; afterResolve = null; f(); }
+}
+/* 편의점에서 안전해진 뒤: 스스로 지하철 3번 출구까지 걸어가 지하철을 타고 집에 간다 */
+function walkToStation(){
+  mode = 'cut'; setPad(); held = null; setGoal('철산역 2번 출구를 통해 집으로 가자');
+  later(() => toast('휴… 편의점 안에서 잠시 숨을 고른다.', 3400), 800);
+  later(() => toast('이제 안전해졌다. 지하철 2번 출구로 가서 집에 가자.', 3000), 7200);
+  later(() => autoTo([15, 43], () => {
+    const g = npcs.find(q => q.enc === 'yakult' && !q.done && !q.gone);
+    if (g) { P.dir = 'right'; approach(g); } else subwayHome();
+  }), 10000);
+}
+function subwayHome(){
+  mode = 'cut'; setPad(); held = null; dlg.hidden = true;
+  P.dir = 'right'; setGoal('');
+  setScript([[16.6, 43]], 1.6, () => {
+    P.hidden = true;
+    transition({ icons:['🚇','🌙','🏠'], title:'지하철 2번 출구 → 7호선', sub:'지하철을 타고 무사히 집에 도착해요…', from:21*60 + 10, to:27*60, ms:3600 }, startChat);
+  }, true);
+}
+function failScene(e, n, c){
+  mode = 'cut'; setPad(); dlg.hidden = true; n.alert = false;
+  camLock = { x:P.fx, y:P.fy };
+  if (c.fail === 'together') {
+    /* 낯선 사람을 따라 건물 안으로 들어가 사라진다 (카메라는 학생을 따라간다) */
+    const route = routeToDoor(n, c.path[c.path.length - 1]);
+    let len = Math.hypot(P.fx - n.x, P.fy - n.y), px = n.x, py = n.y;
+    for (const [qx, qy] of route) { len += Math.hypot(qx - px, qy - py); px = qx; py = qy; }
+    const dur = len / 2 * 1000 + 1000;
+    camLock = null; zoomTo(.75, dur);
+    n.speed = 2; n.path = route.map(p => p.slice()); n.doorFade = true; n.onDone = () => n.gone = true;
+    setScript([[n.x, n.y], ...route], 2, () => { P.hidden = true; }, true);
+    endScene(c.go, c.sys, dur);
+  } else if (c.fail === 'car') {
+    const car = cars[0];
+    zoomTo(.72, 4200);
+    const route = routeToCar(n);
+    let len = Math.hypot(P.fx - n.x, P.fy - n.y), px = n.x, py = n.y;
+    for (const [qx, qy] of route) { len += Math.hypot(qx - px, qy - py); px = qx; py = qy; }
+    const dur = len / 2 * 1000 + 1800;
+    camLock = null; zoomTo(.72, dur);
+    n.speed = 2; n.path = route.map(p => p.slice()); n.onDone = () => n.hidden = true;
+    setScript([[n.x, n.y], ...route], 2, () => {
+      P.hidden = true;
+      later(() => { car.speed = 3.2; car.path = [[-14, 54]]; }, 500);
+    }, true);
+    endScene(c.go, c.sys, dur);
+  } else if (c.fail === 'catch') {
+    n.state = 'catch';
+    const side = n.tx < P.x ? -1 : 1;
+    n.speed = 4.5; n.path = [[P.x + side * .8, P.y]];
+    n.onDone = () => { hurt(); zoomTo(.8, 1600); };
+    endScene(c.go, c.sys, 2200);
+  } else if (c.fail === 'drink') {
+    cv.style.filter = 'blur(4px) saturate(.4) brightness(.8)';
+    zoomTo(1.35, 2600);
+    endScene(c.go, c.sys, 2600);
+  }
+}
+function talkGuard(){
+  mode = 'dialog'; setPad(); held = null;
+  runLines([{ who:'학교안전지킴이 아저씨', text:'차조심하렴.', look:LOOKS.guard }], () => { dlg.hidden = true; mode = 'walk'; setPad(); });
+}
+function limitWarn(){
+  mode = 'dialog'; setPad(); held = null;
+  runLines([{ who:ME, text:'아차, 엄마가 오늘 학원으로 바로 가라고 했다. 오늘은 안 가면 진짜 혼난다…' }], () => { dlg.hidden = true; mode = 'walk'; setPad(); });
+}
+function subwayWarn(){
+  mode = 'dialog'; setPad();
+  runLines([{ who:'시스템', text:'⚠️ 안된다. 학원가야한다. 그리고 여기 들어가려하면 영진쌤이 힘들어진다...' }], () => { dlg.hidden = true; mode = 'walk'; setPad(); });
+}
+function roadHit(c){
+  c.stopped = true; mode = 'cut'; setPad(); held = null; hurt();
+  camLock = { x:P.fx, y:P.fy }; zoomTo(.8, 1400);
+  if (c.school) endScene('좌우를 살피지 않고 건너다 차에 치였어요', '학교 앞 도로에도 차가 지나다닙니다. 신호등이 없어도 건너기 전에 멈춰서 좌우를 살피고, 차가 완전히 지나간 뒤에 건너야 해요.', 1300);
+  else endScene('빨간불에 건너다 차에 치였어요', '보행 신호가 빨간불일 때는 절대 건너면 안 됩니다. 초록불이 켜지면 좌우를 살핀 뒤 건너고, 초록불이 깜빡이면 무리하지 말고 다음 신호를 기다려요.', 1300);
+}
+function updateTraffic(now, dt){
+  if (!M.traffic) { $('#sig').hidden = true; return; }
+  const green = pedGreen(now);
+  for (const y of LANES) {
+    if (now < (laneNext[y] || 0)) continue;
+    const east = y >= 39, sx = east ? -4 : 33;
+    if (!traffic.some(c => c.y === y && Math.abs(c.x - sx) < 2.6))
+      traffic.push({ x:sx, y, dir:east ? 'right' : 'left', color:CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], v:5.5 + Math.random() * 3 });
+    laneNext[y] = now + 700 + Math.random() * 1900;
+  }
+  if (now >= schoolNext) {
+    traffic.push({ x:-7, y:SCHOOL_Y, dir:'right', color:CAR_COLORS[Math.floor(Math.random() * CAR_COLORS.length)], v:4.6, school:true });
+    schoolNext = now + 10000;
+  }
+  for (const c of traffic) {
+    if (c.stopped) continue;
+    const s = c.dir === 'right' ? 1 : -1;
+    let nx = c.x + s * c.v * dt / 1000;
+    if (green && !c.school) {
+      if (s > 0 && c.x + 1.25 <= 10.05) nx = Math.min(nx, 8.5);
+      if (s < 0 && c.x - .25 >= 13.95) nx = Math.max(nx, 14.5);
+    }
+    for (const o of traffic) {
+      if (o === c || o.y !== c.y) continue;
+      const d = (o.x - c.x) * s;
+      if (d > 0 && d < 3.5) nx = s > 0 ? Math.min(nx, o.x - 1.9) : Math.max(nx, o.x + 1.9);
+    }
+    if ((nx - c.x) * s > 0) c.x = nx;
+  }
+  traffic = traffic.filter(c => c.school ? c.x < 37 : (c.x > -7 && c.x < 37));
+  if (mode === 'walk' && P.fy > 34.4 && P.fy < 42.6)
+    for (const c of traffic) if (!c.school && Math.abs(c.y - P.fy) < .6 && Math.abs(c.x - P.fx) < .95) { roadHit(c); break; }
+  if (mode === 'walk' && P.fy > 19.7 && P.fy < 21.6)
+    for (const c of traffic) if (c.school && !c.stopped && Math.abs(c.y - P.fy) < .7 && Math.abs(c.x - P.fx) < 1.05) { roadHit(c); break; }
+  const sig = $('#sig'), near = mode === 'walk' && P.fy > 28 && P.fy < 46;
+  sig.hidden = !near;
+  if (near) {
+    const txt = `${green ? '초록불' : '빨간불'} ${sigLeft(now)}초`;
+    sig.dataset.g = green ? '1' : '0';
+    if ($('#sigT').textContent !== txt) $('#sigT').textContent = txt;
+  }
+}
+function startChase(e, n){
+  chase = { e, n, start:performance.now() + 1200 };
+  n.state = 'chase'; n.alert = false;
+  dlg.hidden = true; mode = 'walk'; setPad();
+  setGoal('편의점으로 가자');
+  toast('도망쳐! 바로 옆(→) 불 켜진 편의점으로 들어가요!', 3600);
+}
+function caught(n){
+  chase = null; n.state = 'catch';
+  mode = 'cut'; setPad(); held = null; hurt();
+  camLock = { x:P.fx, y:P.fy }; zoomTo(.8, 1600);
+  endScene('뒤따라오던 사람에게 붙잡혔어요', CHASE_LESSON, 1400);
+}
+function reachStore(){
+  const { e, n } = chase; chase = null;
+  n.state = 'stop'; mode = 'dialog'; setPad(); held = null;
+  ui.look = n.look;
+  runLines(e.choices.find(c => c.chase).store, () => showSys(e.choices.find(c => c.chase).sys, '계속 걷기', () => resolve(e, n)));
+}
+function onGoal(){
+  mode = 'trans'; setPad();
+  if (M.key === 'day') {
+    transition({ icons:['✏️','📚','📐'], title:'학원에서 공부중...', sub:'철산역 아래 하늘수학학원에서 열심히 공부하는 중이에요', from:16*60+40, to:21*60, ms:3600 }, () => {
+      loadMap('night'); mode = 'walk'; setPad();
+      toast('밤 9시. 학원을 마치고 어두운 상가 뒷길을 지나가요.', 3200);
+    });
+  } else if (M.key === 'night') {
+    transition({ icons:['🏠','🪥','🛏️'], title:'집에 무사히 도착!', sub:'씻고, 숙제하고, 잠자리에 들 준비를 해요…', from:21*60+20, to:27*60, ms:3600 }, startChat);
+  }
+}
+function transition(o, cb){
+  const tr = $('#tr');
+  $('#trI').innerHTML = (o.icons || []).map(i => `<span>${i}</span>`).join('');
+  $('#trT').textContent = o.title; $('#trP').textContent = o.sub || '';
+  const bar = $('#trBar'), clk = $('#trC');
+  clk.hidden = o.from == null;
+  tr.hidden = false;
+  const t0 = performance.now(), ms = RM ? 1500 : o.ms;
+  const step = () => {
+    const p = Math.min(1, (performance.now() - t0) / ms);
+    bar.style.width = (p * 100) + '%';
+    if (o.from != null) { const m = Math.round(o.from + (o.to - o.from) * p); clk.textContent = fmtTime(m); $('#clock').textContent = fmtTime(m); }
+    if (p < 1) setTimeout(step, 50); else setTimeout(() => { tr.hidden = true; cb(); }, 350);
+  };
+  step();
+}
+
+/* ---------- 새벽 3시 채팅 ---------- */
+const msgs = $('#msgs');
+const wait = ms => new Promise(r => setTimeout(r, RM ? Math.min(ms, 200) : ms));
+let chatRun = 0;
+function bubble(from, text){
+  if (from === 'them') { const nm = document.createElement('div'); nm.className = 'nm'; nm.textContent = '줴줴이야'; msgs.appendChild(nm); }
+  const d = document.createElement('div'); d.className = 'b ' + from; d.textContent = fmt(text);
+  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight; return d;
+}
+async function them(text, run){
+  const d = document.createElement('div'); d.className = 'b them typing'; d.innerHTML = '<i></i><i></i><i></i>';
+  msgs.appendChild(d); msgs.scrollTop = msgs.scrollHeight;
+  await wait(900 + Math.min(1200, text.length * 18));
+  d.remove(); if (run !== chatRun) return;
+  bubble('them', text);
+}
+async function startChat(){
+  const run = ++chatRun;
+  cp = { kind:'chat' };
+  mode = 'chat'; setPad(); dlg.hidden = true; setGoal('');
+  $('#mission').innerHTML = '<b>새벽 3:00</b>잠들기 전, 스마트폰이 울렸다';
+  updateClock('새벽 3:00');
+  msgs.innerHTML = ''; $('#phone').classList.remove('on'); $('#chat').hidden = false;
+  runLines([{ who:'상황', text:'무사히 집에 도착해 잠자리에 들 준비를 하는 중, 스마트폰 화면이 밝아진다. 오픈채팅에서 알게 된 \'게임 친구\' 줴줴이야에게서 메시지가 온다.' }], async () => {
+    dlg.hidden = true;
+    $('#phone').classList.add('on');
+    await wait(700);
+    await them('{N아}, 자니?', run); if (run !== chatRun) return;
+    await wait(900); bubble('me', '아니, 이제 자려고. 내일 학교 가야 하거든.');
+    await wait(600);
+    await them('아 그래? 사실 나 지금 너네 집 앞에 차 타고 왔는데 ㅋㅋㅋ 심심해서. 잠깐 나와라, PC방 가서 같이 게임하자! 아까 말한 그 희귀 아이템도 거기서 줄게!', run); if (run !== chatRun) return;
+    await wait(1000); bubble('me', '지금? 새벽 3시인데?');
+    await wait(600);
+    await them('어차피 금방인데 뭐 어때~ 내 차 타고 PC방 갔다가 바로 데려다줄게! 안 나오면 나 그냥 갈 건데 너 아이템 못 받는다?', run); if (run !== chatRun) return;
+    await wait(700);
+    askChat(run);
+  });
+}
+function askChat(run){
+  ui.look = LOOKS.kid;
+  setLine({ who:ME, text:'(줴줴이야한테 뭐라고 답장하지…?)' }, true);
+  showChoices(shuffle([
+    { text:'"알았어, 잠깐 나갔다 올게. 기다려!"', kind:'danger' },
+    { text:'"새벽 시간에 나가는 건 안 돼. 내일 학교 가야 하니까 연락하지 마." 하고 차단 및 신고한다.', kind:'safe' }
+  ]), async c => {
+    dlg.hidden = true;
+    if (c.kind === 'danger') {
+      bubble('me', '알았어, 잠깐 나갔다 올게. 기다려!');
+      await wait(500);
+      await them('오케이, 집 앞 골목으로 나와~ 차 세워놨어!', run); if (run !== chatRun) return;
+      await wait(900);
+      runLines([{ who:'상황', text:'(부모님이 깨지 않게 조용히 현관문을 열고 밖으로 나간다…)' }], () => {
+        dlg.hidden = true;
+        transition({ icons:['🌙'], title:'새벽 3시 5분', sub:'몰래 집을 나와 골목으로 간다…', ms:1800 }, outScene);
+      });
+    } else {
+      bubble('me', '새벽 시간에 나가는 건 안 돼. 내일 학교 가야 하니까 연락하지 마.');
+      await wait(900);
+      const n = document.createElement('div'); n.className = 'b note'; n.textContent = '🚫 \'줴줴이야\'님을 차단하고 신고했습니다.'; msgs.appendChild(n); msgs.scrollTop = msgs.scrollHeight;
+      await wait(1200); if (run !== chatRun) return;
+      runLines([{ who:'상황', text:'(상대방을 차단하고 스마트폰을 끈다.)' }], async () => {
+        dlg.hidden = true;
+        $('#phone').classList.remove('on');
+        await wait(1000); if (run !== chatRun) return;
+        cleared.add('chat'); renderBadges();
+        showSys('온라인에서 알게 된 사람과의 사적인 만남 유도는 절대 응하지 않아야 합니다. 특히 심야 시간 만남 요구는 즉시 거절하고 차단해야 합니다.', '아침이 밝았어요', morning, '성공!', 'yXGKXfbyWdc');
+      });
+    }
+  });
+}
+function outScene(){
+  $('#chat').hidden = true;
+  loadMap('out'); mode = 'cut'; setPad(); cp = { kind:'chat' };
+  /* 흙바닥과 놀이기구만 있는 별도 장면: 움직이지 않고, 처음 보는 사람이 다가와 차로 데려간다 */
+  const s = { enc:'jeje', tx:13, ty:6, x:13.2, y:6, dir:'left', phase:0, path:[], speed:1.8, look:LOOKS.jeje };
+  npcs.push(s);
+  const car = { x:14.5, y:6.6, dir:'down', color:'#34363d', path:[], speed:3 };
+  cars.push(car);
+  camLock = { x:8.5, y:6 }; Z = .9;
+  later(() => {
+    s.path = [[8, 6]];
+    s.onDone = () => {
+      P.dir = 'right'; ui.look = LOOKS.jeje; s.alert = true;
+      runLines([
+        { who:'줴줴이야', text:'오~ 진짜 나왔네? ㅋㅋ 내 차 저기 세워놨어. 같이 PC방 가서 게임하자! 아이템도 거기서 줄게!' },
+        { who:'상황', text:'(처음 보는 어른이다. 마스크를 쓰고 있어서 얼굴이 잘 보이지 않는다…)' }
+      ], () => {
+        dlg.hidden = true; s.alert = false;
+        zoomTo(.7, 5200);
+        /* 두 사람이 세워둔 차에 타고 떠난다 */
+        s.speed = 1.8; s.path = [[14, 6]]; s.doorFade = true; s.onDone = () => { s.hidden = true; };
+        setScript([[7, 6], [13.2, 6]], 1.8, () => { P.hidden = true; later(() => { car.path = [[14.5, 30]]; car.speed = 3.4; }, 500); }, true);
+        endScene('새벽에 낯선 사람을 만나러 나가고 말았어요', CHAT_FAIL, 4800, 'yXGKXfbyWdc');
+      });
+    };
+  }, 1200);
+}
+
+/* ---------- 아침 등교 & 엔딩 ---------- */
+function morning(){
+  transition({ icons:['🌞'], title:'다음 날 아침 08:40', sub:'모든 위험 상황을 안전하게 극복했습니다!', ms:2600 }, () => {
+    $('#chat').hidden = true;
+    loadMap('morning'); mode = 'auto'; setPad();
+    setTimeout(() => autoTo([4, 15], () => { mode = 'end'; setTimeout(showEnd, 500); }), 400);
+  });
+}
+function showEnd(){
+  $('#endP').textContent = fmt('{N은} 상쾌한 아침 공기를 마시며 안전하게 광명중학교로 등교합니다.');
+  $('#stBadge').textContent = `${cleared.size} / 7`;
+  $('#stMiss').textContent = `${overs}번`;
+  $('#stGrade').textContent = overs === 0 ? '★★★ 안전왕' : overs <= 2 ? '★★ 잘했어요' : '★ 다시 연습해요';
+  $('#end').hidden = false; $('#end').scrollTop = 0;
+}
+function restart(){
+  chatRun++; cleared = new Set(); overs = 0; cp = null; renderBadges();
+  ['#end', '#chat', '#sys', '#tr', '#gameover'].forEach(s => $(s).hidden = true);
+  dlg.hidden = true; ui.choices = false; ui.sys = false; ui.next = null; $('#choices').hidden = true;
+  loadMap('day'); mode = 'title'; setPad(); $('#title').hidden = false;
+}
+$('#again').onclick = restart;
+$('#startForm').addEventListener('submit', e => {
+  e.preventDefault();
+  N = '00이';
+  $('#title').hidden = true;
+  playIntro(beginGame);
+});
+function beginGame(){
+  mode = 'walk'; setPad();
+  toast('정문을 나가 길을 건너 학원까지 가요. 방향키나 화면 버튼으로 움직여요.', 3800);
+}
+/* 시작 전 안내 영상(intro.mp4, 10초 내외): 끝나면 게임이 시작된다. 파일이 없거나 재생이 안 되면 바로 게임으로 넘어간다 */
+const INTRO_SRC = 'intro.mp4';
+function playIntro(done){
+  const box = $('#intro'), v = $('#introV'); let fin = false;
+  const snd = $('#introSnd'), tap = $('#introTap');
+  const finish = why => { if (fin) return; fin = true; snd.hidden = true; tap.hidden = true; v.pause(); v.removeAttribute('src'); v.load();
+    /* 영상이 끝나면 검은 화면에서 게임 화면이 서서히 밝아진다 */
+    if (why || RM) box.hidden = true; else { box.classList.add('fadeout'); setTimeout(() => { box.hidden = true; box.classList.remove('fadeout'); }, 2500); }
+    if (why) { console.warn('intro 영상 건너뜀:', why); } done(); if (why) toast('시작 영상을 불러오지 못해 바로 시작합니다 (intro.mp4 확인)', 3600); };
+  mode = 'title'; setPad();
+  v.onended = () => finish(); v.onerror = () => finish('load error');
+  tap.hidden = true; snd.hidden = true; snd.onclick = () => { v.muted = false; snd.hidden = true; };
+  v.muted = false; v.src = INTRO_SRC; box.hidden = false;
+  const pr = v.play();
+  /* 소리 재생이 막히면 음소거로 다시 시도한다 */
+  if (pr && pr.catch) pr.catch(() => {
+    v.muted = true; const p2 = v.play();
+    const needTap = () => { /* 휴대폰 절전 모드·인앱 브라우저처럼 자동 재생이 막힌 경우: 한 번 터치하면 소리와 함께 재생한다 */
+      if (fin) return; tap.hidden = false;
+      tap.onclick = () => { tap.hidden = true; v.muted = false; const p3 = v.play(); if (p3 && p3.catch) p3.catch(() => finish('play blocked')); };
+    };
+    if (p2 && p2.then) p2.then(() => { if (!fin) snd.hidden = false; }, needTap); else needTap();
+  });
+}
+
+/* ---------- 입력 ---------- */
+const KEY = { ArrowUp:'up', KeyW:'up', ArrowDown:'down', KeyS:'down', ArrowLeft:'left', KeyA:'left', ArrowRight:'right', KeyD:'right' };
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') return;
+  if (ui.sys && (e.code === 'Enter' || e.code === 'Space')) { e.preventDefault(); $('#sysB').click(); return; }
+  if (ui.choices) {
+    const i = { Digit1:0, Digit2:1, Digit3:2, Numpad1:0, Numpad2:1, Numpad3:2, KeyA:0, KeyB:1, KeyC:2 }[e.code];
+    if (i != null && i < ui.nChoices) { e.preventDefault(); ui.pick(i); }
+    return;
+  }
+  if (!dlg.hidden && (e.code === 'Space' || e.code === 'Enter')) { e.preventDefault(); advance(); return; }
+  if (KEY[e.code]) { e.preventDefault(); if (mode === 'walk') held = KEY[e.code]; }
+});
+addEventListener('keyup', e => { if (KEY[e.code] === held) held = null; });
+addEventListener('blur', () => held = null);
+document.querySelectorAll('#pad button').forEach(b => {
+  const on = e => { e.preventDefault(); b.setPointerCapture && b.setPointerCapture(e.pointerId); if (mode === 'walk') held = b.dataset.d; b.classList.add('on'); };
+  const off = () => { if (held === b.dataset.d) held = null; b.classList.remove('on'); };
+  b.addEventListener('pointerdown', on); b.addEventListener('pointerup', off); b.addEventListener('pointercancel', off); b.addEventListener('lostpointercapture', off);
+});
+function setPad(){ $('#pad').hidden = mode !== 'walk'; if (mode !== 'walk') held = null; }
+
+/* ---------- 그리기 ---------- */
+function resize(){
+  const r = stage.getBoundingClientRect();
+  DPR = Math.min(2, devicePixelRatio || 1); W = r.width; H = r.height;
+  cv.width = nc.width = Math.max(1, Math.round(W * DPR)); cv.height = nc.height = Math.max(1, Math.round(H * DPR));
+  T = Math.max(40, Math.min(72, Math.round(Math.min(W / 11, H / 9))));
+}
+addEventListener('resize', resize);
+if (window.ResizeObserver) new ResizeObserver(resize).observe(stage);
+const hash = (x, y) => { let h = (x * 374761393 + y * 668265263) | 0; h = (h ^ (h >>> 13)) * 1274126177; return (h ^ (h >>> 16)) >>> 0; };
+let CAM = { x:0, y:0 };
+const scr = (tx, ty) => ({ x:(tx - CAM.x - .5) * T + W / 2, y:(ty - CAM.y - .5) * T + H / 2 });
+function rrc(c, x, y, w, h, r){ c.beginPath(); if (c.roundRect) c.roundRect(x, y, w, h, r); else c.rect(x, y, w, h); }
+function rect(c, x, y, w, h){ ctx.fillStyle = c; ctx.fillRect(x, y, w, h); }
+function ell(c, col, x, y, rx, ry){ c.fillStyle = col; c.beginPath(); c.ellipse(x, y, Math.max(.1, rx), Math.max(.1, ry), 0, 0, 7); c.fill(); }
+function shade(hex, k = .78){ const n = parseInt(hex.slice(1), 16); const f = v => Math.round(v * k); return `rgb(${f(n >> 16)},${f((n >> 8) & 255)},${f(n & 255)})`; }
+let glow = [];
+
+/* 사람 그리기 (학생과 등장인물 모두) */
+function drawPerson(c, cx, cy, S, dir, moving, phase, L, alpha = 1, portrait = false){
+  const s = S * (L.h || 1), bob = moving ? Math.abs(Math.sin(phase)) * s * .045 : 0, sw = moving ? Math.sin(phase) * s * .06 : 0;
+  const by = cy + S * .36 - s * .34 - bob, side = dir === 'left' || dir === 'right', fx = dir === 'left' ? -1 : 1;
+  c.save(); c.globalAlpha = alpha;
+  if (!portrait) ell(c, 'rgba(0,0,0,.25)', cx, cy + S * .38, S * .24, S * .08);
+  c.fillStyle = L.pants;
+  rrc(c, cx - s * .12, by + s * .12 + sw, s * .09, s * .22, 3); c.fill();
+  rrc(c, cx + s * .03, by + s * .12 - sw, s * .09, s * .22, 3); c.fill();
+  if (L.bag && side) { rrc(c, dir === 'left' ? cx + s * .08 : cx - s * .24, by - s * .1, s * .16, s * .26, 5); c.fillStyle = '#ffcf33'; c.fill(); }
+  if (L.cane && dir !== 'up') { c.strokeStyle = '#6b4a2b'; c.lineWidth = Math.max(2, s * .03); c.beginPath(); c.moveTo(cx + s * .24, by + s * .1); c.lineTo(cx + s * .3, by + s * .36); c.stroke(); }
+  // 팔
+  if (!side) {
+    c.fillStyle = L.top;
+    rrc(c, cx - s * .25, by - s * .09 + sw * .7, s * .08, s * .22, 4); c.fill();
+    rrc(c, cx + s * .17, by - s * .09 - sw * .7, s * .08, s * .22, 4); c.fill();
+    ell(c, L.skin, cx - s * .21, by + s * .14 + sw * .7, s * .04, s * .04);
+    ell(c, L.skin, cx + s * .21, by + s * .14 - sw * .7, s * .04, s * .04);
+  }
+  rrc(c, cx - s * .18, by - s * .12, s * .36, s * .3, s * .08); c.fillStyle = L.top; c.fill();
+  if (side) {
+    rrc(c, cx - s * .04 + fx * s * .02, by - s * .08, s * .08, s * .22, 4); c.fillStyle = shade(L.top); c.fill();
+    ell(c, L.skin, cx + fx * s * .02 + sw * .8, by + s * .15, s * .04, s * .04);
+  }
+  if (L.bag) {
+    if (dir === 'up') {
+      rrc(c, cx - s * .17, by - s * .14, s * .34, s * .3, s * .07); c.fillStyle = '#ffcf33'; c.fill();
+      c.strokeStyle = '#d29a00'; c.lineWidth = 2; c.stroke();
+      c.fillStyle = '#f5f5f5'; c.fillRect(cx - s * .14, by + s * .02, s * .28, s * .04);
+    } else if (dir === 'down') {
+      c.fillStyle = '#ffcf33'; c.fillRect(cx - s * .14, by - s * .12, s * .05, s * .22); c.fillRect(cx + s * .09, by - s * .12, s * .05, s * .22);
+      c.fillStyle = '#ffffff'; c.fillRect(cx - s * .04, by - s * .12, s * .08, s * .07);
+    }
+  }
+  if (L.drink && dir !== 'up') {
+    const dx = cx + (side ? fx * s * .16 : s * .22), dy = by + s * .02;
+    c.fillStyle = '#fff'; rrc(c, dx - s * .035, dy, s * .07, s * .1, 2); c.fill();
+    c.fillStyle = '#e8483d'; c.fillRect(dx - s * .035, dy + s * .03, s * .07, s * .025);
+    c.strokeStyle = '#ff9db0'; c.lineWidth = 2; c.beginPath(); c.moveTo(dx, dy); c.lineTo(dx + s * .03, dy - s * .07); c.stroke();
+  }
+  // 머리
+  const hy = by - s * .27, hr = s * .2;
+  if (L.hs === 'hood') ell(c, L.top, cx, hy, hr * 1.2, hr * 1.17);
+  ell(c, L.skin, cx, hy, hr, hr * .95);
+  c.fillStyle = L.hs === 'hood' ? L.top : L.hair;
+  c.beginPath();
+  if (dir === 'up') c.ellipse(cx, hy, hr * 1.03, hr * .98, 0, 0, 7);
+  else {
+    c.ellipse(cx, hy - s * .07, hr * 1.05, s * .13, 0, Math.PI, 0);
+    c.rect(cx - hr * 1.05, hy - s * .08, hr * 2.1, s * .05);
+    if (dir === 'left') c.rect(cx + s * .08, hy - s * .08, s * .13, s * .16);
+    if (dir === 'right') c.rect(cx - s * .21, hy - s * .08, s * .13, s * .16);
+    if (L.hs === 'hood') { c.rect(cx - hr * 1.2, hy - s * .05, s * .06, s * .2); c.rect(cx + hr * 1.2 - s * .06, hy - s * .05, s * .06, s * .2); }
+  }
+  c.fill();
+  if (L.hs === 'cap' || L.hs === 'visor') {
+    c.fillStyle = L.cap;
+    if (L.hs === 'cap') { c.beginPath(); c.ellipse(cx, hy - s * .08, hr * 1.06, s * .12, 0, Math.PI, 0); c.fill(); }
+    else c.fillRect(cx - hr * 1.05, hy - s * .12, hr * 2.1, s * .05);
+    c.fillStyle = shade(L.cap, .8);
+    if (dir === 'down') c.fillRect(cx - hr * .9, hy - s * .09, hr * 1.8, s * .05);
+    if (dir === 'left') c.fillRect(cx - hr * 1.5, hy - s * .1, hr * .9, s * .05);
+    if (dir === 'right') c.fillRect(cx + hr * .6, hy - s * .1, hr * .9, s * .05);
+  }
+  if (dir !== 'up') {
+    const ex = side ? [cx + fx * s * .1] : [cx - s * .07, cx + s * .07];
+    ex.forEach(x => ell(c, '#1d1a18', x, hy + s * .03, s * .025, s * .032));
+    if (L.glasses) { c.strokeStyle = '#333'; c.lineWidth = Math.max(1.5, s * .015); ex.forEach(x => { c.beginPath(); c.arc(x, hy + s * .03, s * .05, 0, 7); c.stroke(); }); }
+    if (L.beard) ell(c, 'rgba(40,30,25,.75)', cx + (side ? fx * s * .06 : 0), hy + s * .12, s * .1, s * .05);
+    if (L.mask) { c.fillStyle = L.mask; rrc(c, cx - s * .12 + (side ? fx * s * .05 : 0), hy + s * .06, s * .24, s * .1, 4); c.fill(); }
+    if (!L.mask && !L.beard && dir === 'down' && L === LOOKS.kid) {
+      ell(c, 'rgba(255,120,120,.35)', cx - s * .12, hy + s * .09, s * .04, s * .025); ell(c, 'rgba(255,120,120,.35)', cx + s * .12, hy + s * .09, s * .04, s * .025);
+    }
+  }
+  c.restore();
+}
+function drawCar(car){
+  if (car.gone) return;
+  const p = scr(car.x + .5, car.y + .5), t = T;
+  ctx.save(); ctx.translate(p.x, p.y);
+  ctx.rotate({ down:0, up:Math.PI, left:Math.PI / 2, right:-Math.PI / 2 }[car.dir] || 0);
+  const L = t * 1.5, Wd = t * .78;
+  ell(ctx, 'rgba(0,0,0,.28)', 0, t * .06, Wd * .62, L * .54);
+  rrc(ctx, -Wd / 2, -L / 2, Wd, L, t * .16); ctx.fillStyle = car.color; ctx.fill();
+  ctx.fillStyle = '#16202e';
+  rrc(ctx, -Wd * .4, L * .08, Wd * .8, L * .2, t * .06); ctx.fill();
+  rrc(ctx, -Wd * .38, -L * .32, Wd * .76, L * .14, t * .05); ctx.fill();
+  rrc(ctx, -Wd * .4, -L * .15, Wd * .8, L * .22, t * .06); ctx.fillStyle = shade(car.color, .9); ctx.fill();
+  ell(ctx, M.night ? '#fff6c0' : '#f2f2f2', -Wd * .3, L * .47, t * .07, t * .04);
+  ell(ctx, M.night ? '#fff6c0' : '#f2f2f2', Wd * .3, L * .47, t * .07, t * .04);
+  ell(ctx, '#d33', -Wd * .3, -L * .48, t * .06, t * .03); ell(ctx, '#d33', Wd * .3, -L * .48, t * .06, t * .03);
+  ctx.restore();
+}
+
+const BLD = {
+  B:{ day:['#ece4d6','#b9a48c','#8db4d4'], night:['#252a3e','#171a28'] },
+  H:{ day:['#efe1f0','#b79bb8','#a3bde0'], night:['#2b2742','#1a1729'] },
+  S:{ day:['#f3f4f0','#5fae8f','#cfe6f5'], night:['#2c3436','#1a2224'] },
+  h:{ day:['#efe9df','#4f6f9a','#cfe6f5'], night:['#2b3036','#1a2026'] },
+  Q:{ day:['#ece6dd','#c07a5c','#cfe6f5'], night:['#302a2a','#1e1818'] },
+  G:{ day:['#dfe2e4','#9aa3ab','#bcd3e3'], night:['#2a2e36','#1a1d24'] },
+  J:{ day:['#dfe6ee','#2f6db5','#b9d3ea'], night:['#262c38','#18202c'] },
+  L:{ day:['#ece5d6','#7b6a55','#c9dbe6'], night:['#2e2b28','#1d1b18'] },
+  A:{ day:['#cfd3f3','#6c74c9','#a9c9ff'], night:['#2c2f52','#1b1d38'] },
+  K:{ day:['#e9eef6','#3d6fb6','#a9d3f0'], night:['#2b3348','#1a2033'] },
+  M:{ day:['#f6f0e4','#9b8f7b','#bfe0ee'], night:['#2f2c33','#1c1a20'] },
+  F:{ day:['#ffe3c2','#d9563c','#ffe9c9'], night:['#3a2a24','#21170f'] },
+  C:{ day:['#f4fbff','#1f9e8a','#d9fbff'], night:['#e6f3f6','#1f9e8a'] }
+};
+function drawBuilding(ch, x, y, sx, sy){
+  if (ch === 'V') return drawApt(x, y, sx, sy);
+  const t = T, n = M.night, pal = (BLD[ch] || BLD.B)[n ? 'night' : 'day'], h = hash(x, y);
+  const same = c => c === ch || (ch === 'C' && c === 'O') || (ch === 'A' && c === 'D') || (ch === 'H' && c === 'E');
+  const up = same(tileAt(x, y - 1)), down = same(tileAt(x, y + 1));
+  rect(pal[0], sx, sy, t + 1, t + 1);
+  if (ch === 'S' || ch === 'Q' || ch === 'h') return; // 학교 건물은 drawDecor에서 층수대로 그림
+  if (!up) rect(pal[1], sx, sy, t + 1, t * .16);
+  const shopBelow = 'ACDOF'.includes(tileAt(x, y + 1)); // 학원·편의점·분식 위의 칸은 그 건물의 위층
+  if ((ch === 'M' || ch === 'F' || ch === 'A' || ch === 'C') && !down && !(ch === 'M' && shopBelow)) {
+    const cols = ch === 'F' ? ['#e2483d', '#fff'] : ch === 'A' ? ['#3b82c4', '#fff'] : ch === 'C' ? null : [['#e2483d','#3b82c4','#2fa36b','#f2a33a'][h % 4], '#fff'];
+    for (let i = 0; i < 4; i++) rect(cols ? cols[i % 2] : ['#e2483d','#ffd23f','#2fa36b','#3b82c4'][(x + i) % 4], sx + i * t / 4, sy + t * .1, t / 4 + 1, t * .2);
+    rect(n ? '#ffe7a8' : pal[2], sx + t * .1, sy + t * .42, t * .8, t * .5);
+    if (n) glow.push([sx + t * .1, sy + t * .42, t * .8, t * .5, 'rgba(255,214,140,.55)']);
+    return;
+  }
+  if (ch === 'G') { // 체육관: 큰 지붕
+    ctx.strokeStyle = n ? 'rgba(255,255,255,.05)' : 'rgba(0,0,0,.08)'; ctx.lineWidth = 1;
+    for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(sx + i * t / 4, sy); ctx.lineTo(sx + i * t / 4, sy + t); ctx.stroke(); }
+    return;
+  }
+  const wy = sy + t * (up ? .26 : .32), wh = t * .36;
+  for (const wx of [.14, .56]) {
+    const lit = n && (hash(x * 3 + wx * 10, y) % 4 === 0);
+    const c = n ? (lit ? '#ffd77a' : '#151a2a') : pal[2];
+    rect(c, sx + t * wx, wy, t * .3, wh);
+    if (!n) rect('rgba(255,255,255,.45)', sx + t * wx, wy, t * .3, wh * .25);
+    if (lit) glow.push([sx + t * wx, wy, t * .3, wh, 'rgba(255,215,122,.9)']);
+  }
+  if (!down) rect('rgba(0,0,0,.18)', sx, sy + t * .9, t + 1, t * .1);
+}
+/* 아파트(V): 흰색 벽 + 층마다 회색 베란다 난간이 있는 파란 유리창 (상가와 구분) */
+function drawApt(x, y, sx, sy){
+  const t = T, n = M.night, V = (a, b) => tileAt(a, b) === 'V';
+  const up = V(x, y - 1), down = V(x, y + 1), lf = V(x - 1, y), rt = V(x + 1, y);
+  rect(n ? '#3d4252' : '#f6f7f9', sx, sy, t + 1, t + 1);
+  rect(n ? '#343847' : '#e4e8ed', sx + t * .46, sy, t * .08, t + 1); // 세로 분할선
+  for (const fy of [.1, .58]) for (const fx of [.12, .6]) {
+    const lit = n && hash(x * 5 + Math.round(fx * 10), y * 7 + Math.round(fy * 10)) % 3 === 0;
+    rect(n ? (lit ? '#ffd77a' : '#1a1d28') : '#8fb4d0', sx + t * fx, sy + t * fy, t * .28, t * .26);
+    if (!n) rect('rgba(255,255,255,.5)', sx + t * fx, sy + t * fy, t * .28, t * .07);
+    if (lit) glow.push([sx + t * fx, sy + t * fy, t * .28, t * .26, 'rgba(255,215,122,.9)']);
+    rect(n ? '#2a2e3b' : '#b9c3ce', sx + t * fx - 2, sy + t * (fy + .27), t * .32, 3);
+  }
+  rect(n ? '#2a2e3b' : '#d3d9e0', sx, sy + t * .46, t + 1, 2);
+  if (!up) { rect(n ? '#22252f' : '#8d98a5', sx, sy, t + 1, t * .13); rect(n ? '#4a4f60' : '#c9d1da', sx, sy + t * .13, t + 1, 3); }
+  if (!down) rect('rgba(0,0,0,.18)', sx, sy + t * .9, t + 1, t * .1);
+  if (!lf) rect(n ? '#2a2e3b' : '#cdd4dc', sx, sy, t * .06, t + 1);
+  if (!rt) rect(n ? '#2a2e3b' : '#cdd4dc', sx + t * .94, sy, t * .06, t + 1);
+}
+function drawGround(sx, sy, kind){
+  const t = T, n = M.night;
+  const col = { side:n ? '#363a4b' : '#dcd6c8', park:n ? '#4a4334' : '#e8d3a0', yard:n ? '#33343e' : '#d3cbbb', sand:n ? '#4a4434' : '#ead7a0' }[kind];
+  rect(col, sx, sy, t + 1, t + 1);
+  if (kind === 'side' || kind === 'park') {
+    ctx.strokeStyle = n ? 'rgba(0,0,0,.25)' : 'rgba(120,100,80,.14)';
+    ctx.lineWidth = 1; ctx.strokeRect(sx + .5, sy + .5, t - 1, t - 1);
+  }
+}
+function drawGrass(x, y, sx, sy){
+  const t = T, n = M.night, h = hash(x, y);
+  rect(n ? '#1d3123' : '#a6d67f', sx, sy, t + 1, t + 1);
+  ctx.strokeStyle = n ? '#25402c' : '#8cc466'; ctx.lineWidth = 2;
+  ctx.beginPath(); const gx = sx + (h % 5) * t / 6 + t * .1, gy = sy + ((h >> 3) % 5) * t / 6 + t * .2;
+  ctx.moveTo(gx, gy); ctx.lineTo(gx - 3, gy - 6); ctx.moveTo(gx + 4, gy); ctx.lineTo(gx + 6, gy - 7); ctx.stroke();
+  if (!n && h % 7 === 0) ell(ctx, ['#ff8fb1','#ffd23f','#ffffff'][h % 3], sx + t * .7, sy + t * .7, t * .06, t * .06);
+}
+function drawTree(x, y, sx, sy){
+  drawGrass(x, y, sx, sy);
+  const t = T, n = M.night, cx = sx + t / 2, cy = sy + t / 2;
+  ell(ctx, 'rgba(0,0,0,.18)', cx, cy + t * .3, t * .34, t * .1);
+  rect(n ? '#3a2a1c' : '#8a5a34', cx - t * .06, cy + t * .05, t * .12, t * .26);
+  ell(ctx, n ? '#14291b' : '#4d9a48', cx, cy - t * .04, t * .4, t * .36);
+  ell(ctx, n ? '#1b3524' : '#6cbf5f', cx - t * .1, cy - t * .14, t * .2, t * .17);
+}
+function drawRoad(x, y, sx, sy){
+  const t = T, n = M.night;
+  rect(n ? '#24272f' : '#5e626b', sx, sy, t + 1, t + 1);
+  const lane = (yy) => tileAt(x, yy) === 'R' || tileAt(x, yy) === 'z';
+  if (y === 38) { rect('#f2c230', sx, sy + t - 4, t + 1, 3); rect('#f2c230', sx, sy + t + 1, t + 1, 3); }
+  else if (((y === 20 && x < 26) || (y >= 35 && y <= 41) || y === 53) && lane(y + 1) && x % 2 === 0) rect('rgba(255,255,255,.75)', sx + t * .15, sy + t - 2, t * .7, 4);
+  if (x === 26 && y <= 34 && y !== 20 && y !== 21) rect('#f2c230', sx + t - 2, sy, 3, t + 1);
+}
+function drawTile(ch, x, y, sx, sy, now){
+  const t = T, n = M.night;
+  switch (ch) {
+    case '.': drawGround(sx, sy, 'side'); break;
+    case ',': drawGround(sx, sy, 'park'); break;
+    case 'y': drawGround(sx, sy, 'yard'); break;
+    case '=':
+      drawGround(sx, sy, 'yard');
+      ctx.fillStyle = n ? 'rgba(255,210,63,.35)' : 'rgba(255,210,63,.8)';
+      for (let i = 0; i < 3; i++) ctx.fillRect(sx + t * .08, sy + t * (.12 + i * .3), t * .84, t * .1);
+      if (tileAt(x - 1, y) === 'w') rect(n ? '#5a3430' : '#8a3d32', sx, sy + t * .2, t * .14, t * .6);
+      if (tileAt(x + 1, y) === 'w') rect(n ? '#5a3430' : '#8a3d32', sx + t * .86, sy + t * .2, t * .14, t * .6);
+      break;
+    case 'p': {
+      drawGround(sx, sy, 'sand'); const h = hash(x, y);
+      if (h % 3 === 0) { rect(n ? '#5a3a3a' : '#e2483d', sx + t * .3, sy + t * .15, t * .4, t * .7); rect(n ? '#3a3a50' : '#3b82c4', sx + t * .36, sy + t * .2, t * .28, t * .3); }
+      else if (h % 3 === 1) { ctx.strokeStyle = n ? '#555' : '#777'; ctx.lineWidth = 3; ctx.strokeRect(sx + t * .2, sy + t * .3, t * .6, t * .4); rect(n ? '#665' : '#f2a33a', sx + t * .35, sy + t * .55, t * .3, t * .08); }
+      break;
+    }
+    case 'g': drawGrass(x, y, sx, sy); break;
+    case 'T': drawTree(x, y, sx, sy); break;
+    case 'f': rect(n ? (x % 2 ? '#1c3320' : '#1f3823') : (x % 2 ? '#5fae4c' : '#57a445'), sx, sy, t + 1, t + 1); break;
+    case 'r':
+      rect(n ? '#3d2420' : '#c4573f', sx, sy, t + 1, t + 1);
+      ctx.strokeStyle = 'rgba(255,255,255,.25)'; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(sx, sy + t * .33); ctx.lineTo(sx + t, sy + t * .33); ctx.moveTo(sx, sy + t * .66); ctx.lineTo(sx + t, sy + t * .66); ctx.stroke();
+      break;
+    case 'w':
+      drawGround(sx, sy, 'side');
+      rect(n ? '#4a2a26' : '#b5574a', sx, sy + t * .38, t + 1, t * .26);
+      rect(n ? '#5a3430' : '#d07a6c', sx, sy + t * .38, t + 1, t * .06);
+      break;
+    case '0': rect('#000', sx, sy, t + 1, t + 1); break;
+    case 's': { // 놀이터 흙바닥
+      rect(n ? '#3b3128' : '#c4a880', sx, sy, t + 1, t + 1);
+      const h = hash(x, y);
+      ctx.fillStyle = n ? 'rgba(0,0,0,.25)' : 'rgba(120,90,55,.22)';
+      for (let i = 0; i < 4; i++) ctx.fillRect(sx + ((h >> (i * 3)) % 9) * t / 10 + 2, sy + ((h >> (i * 3 + 1)) % 9) * t / 10 + 2, 3, 2);
+      break;
+    }
+    case 'R': drawRoad(x, y, sx, sy); break;
+    case 'z': {
+      drawRoad(x, y, sx, sy);
+      const ew = tileAt(x, y - 1) === 'R' || tileAt(x, y + 1) === 'R';
+      ctx.fillStyle = n ? 'rgba(220,220,230,.55)' : 'rgba(255,255,255,.92)';
+      for (let i = 0; i < 3; i++) {
+        if (ew) ctx.fillRect(sx + t * (.06 + i * .33), sy + t * .1, t * .18, t * .8);
+        else ctx.fillRect(sx + t * .1, sy + t * (.06 + i * .33), t * .8, t * .18);
+      }
+      break;
+    }
+    case 'x': drawGround(sx, sy, 'side'); break; // 지하철 입구는 drawDecor에서 두 칸짜리로 그림
+    case 'O': {
+      drawBuilding('C', x, y, sx, sy);
+      rect(n ? '#fffbe0' : '#bff0ff', sx + t * .2, sy + t * .3, t * .6, t * .7);
+      rect('#1f9e8a', sx + t * .48, sy + t * .3, t * .04, t * .7);
+      if (n) glow.push([sx + t * .2, sy + t * .3, t * .6, t * .7, 'rgba(255,251,224,.95)']);
+      if (chase) { const a = .5 + .4 * Math.sin(now / 160); ctx.strokeStyle = `rgba(255,210,63,${a})`; ctx.lineWidth = 4; ctx.strokeRect(sx + 3, sy + 3, t - 6, t - 6); }
+      break;
+    }
+    case 'D': case 'E': {
+      drawBuilding(ch === 'D' ? 'A' : 'H', x, y, sx, sy);
+      rect(n ? '#151a2a' : '#3b3f6e', sx + t * .08, sy + t * .1, t * .84, t * .9);
+      rect(n ? '#ffe2a0' : '#bfd8ff', sx + t * .14, sy + t * .18, t * .33, t * .82);
+      rect(n ? '#ffe2a0' : '#bfd8ff', sx + t * .53, sy + t * .18, t * .33, t * .82);
+      if (n) glow.push([sx + t * .14, sy + t * .18, t * .72, t * .82, 'rgba(255,226,160,.7)']);
+      if (ch === M.goal && mode === 'walk') {
+        const a = .45 + .35 * Math.sin(now / 250);
+        ctx.strokeStyle = `rgba(255,210,63,${a})`; ctx.lineWidth = 4; ctx.strokeRect(sx + 3, sy + 3, t - 6, t - 6);
+      }
+      break;
+    }
+    default: drawBuilding(ch === 'X' ? 'B' : ch, x, y, sx, sy);
+  }
+}
+/* 새벽 놀이터 장면의 놀이기구 (그네·미끄럼틀·시소·모래놀이터·벤치) */
+function drawPlayground(){
+  const t = T, n = M.night, wood = n ? '#5a4330' : '#8a5a34', steel = n ? '#4a5160' : '#6b7480';
+  // 모래놀이터
+  const sb = scr(9, 7.5); rrc(ctx, sb.x, sb.y, t * 3.4, t * 2.2, t * .12); ctx.fillStyle = n ? '#4d4535' : '#ecd9a6'; ctx.fill();
+  ctx.strokeStyle = wood; ctx.lineWidth = Math.max(3, t * .1); ctx.stroke();
+  ell(ctx, n ? '#2e2a22' : '#c9b27a', sb.x + t * 1.2, sb.y + t * 1.1, t * .35, t * .22);
+  // 그네
+  const sw = scr(2, 2.2), sw2 = scr(6, 2.2);
+  rect(steel, sw.x, sw.y, t * .12, t * 1.9); rect(steel, sw2.x, sw2.y, t * .12, t * 1.9);
+  rect(steel, sw.x, sw.y, sw2.x - sw.x + t * .12, t * .12);
+  for (const k of [1.2, 2.8]) {
+    const px = sw.x + t * k;
+    ctx.strokeStyle = steel; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(px - t * .15, sw.y + t * .12); ctx.lineTo(px - t * .15, sw.y + t * 1.45); ctx.moveTo(px + t * .15, sw.y + t * .12); ctx.lineTo(px + t * .15, sw.y + t * 1.45); ctx.stroke();
+    rrc(ctx, px - t * .22, sw.y + t * 1.45, t * .44, t * .1, 3); ctx.fillStyle = n ? '#7a3a3a' : '#e2483d'; ctx.fill();
+  }
+  // 미끄럼틀
+  const sl = scr(10, 1.6);
+  rect(wood, sl.x, sl.y, t * .7, t * .7);
+  rect(n ? '#3a4a6a' : '#3b82c4', sl.x, sl.y, t * .7, t * .12);
+  ctx.beginPath(); ctx.moveTo(sl.x + t * .15, sl.y + t * .7); ctx.lineTo(sl.x + t * .55, sl.y + t * .7); ctx.lineTo(sl.x + t * .75, sl.y + t * 2.3); ctx.lineTo(sl.x + t * .05, sl.y + t * 2.3); ctx.closePath();
+  ctx.fillStyle = n ? '#8a6a2a' : '#f2b630'; ctx.fill(); ctx.strokeStyle = steel; ctx.lineWidth = 3; ctx.stroke();
+  // 시소
+  const ss = scr(3.2, 8.6);
+  ctx.save(); ctx.translate(ss.x + t * 1.2, ss.y + t * .5); ctx.rotate(-.08);
+  rrc(ctx, -t * 1.2, -t * .08, t * 2.4, t * .16, 4); ctx.fillStyle = n ? '#7a3a3a' : '#e2483d'; ctx.fill(); ctx.restore();
+  ctx.beginPath(); ctx.moveTo(ss.x + t * 1.0, ss.y + t * .85); ctx.lineTo(ss.x + t * 1.2, ss.y + t * .5); ctx.lineTo(ss.x + t * 1.4, ss.y + t * .85); ctx.closePath(); ctx.fillStyle = steel; ctx.fill();
+  // 벤치
+  const bn = scr(7, 9.2);
+  rect(wood, bn.x, bn.y, t * 1.4, t * .22); rect(wood, bn.x, bn.y + t * .3, t * 1.4, t * .1); rect(steel, bn.x + t * .1, bn.y + t * .4, t * .08, t * .3); rect(steel, bn.x + t * 1.22, bn.y + t * .4, t * .08, t * .3);
+  // 스프링 말
+  const sp = scr(12, 3.4);
+  ell(ctx, n ? '#5a3a5a' : '#8a4fd1', sp.x + t * .5, sp.y + t * .4, t * .3, t * .22); ell(ctx, 'rgba(0,0,0,.2)', sp.x + t * .5, sp.y + t * .75, t * .26, t * .08);
+}
+function drawDecor(){
+  if (M.key === 'out') return; // 놀이기구 없는 흙바닥 골목
+  // 운동장 라인 (광명중)
+  const a = scr(2, 2), b = scr(11, 9), t = T;
+  ctx.strokeStyle = M.night ? 'rgba(255,255,255,.25)' : 'rgba(255,255,255,.85)'; ctx.lineWidth = Math.max(2, t * .04);
+  const x0 = a.x + t * .2, y0 = a.y + t * .2, w = b.x - a.x - t * .4, h = b.y - a.y - t * .4;
+  ctx.strokeRect(x0, y0, w, h);
+  ctx.beginPath(); ctx.moveTo(x0, y0 + h / 2); ctx.lineTo(x0 + w, y0 + h / 2); ctx.stroke();
+  ctx.beginPath(); ctx.arc(x0 + w / 2, y0 + h / 2, t * .9, 0, 7); ctx.stroke();
+  ctx.strokeRect(x0 + w * .25, y0, w * .5, t * 1.1); ctx.strokeRect(x0 + w * .25, y0 + h - t * 1.1, w * .5, t * 1.1);
+  ctx.strokeRect(x0 + w * .38, y0, w * .24, t * .45); ctx.strokeRect(x0 + w * .38, y0 + h - t * .45, w * .24, t * .45);
+  // 광명중 건물: 후관 4층, 본관 5층
+  facade(2, 11, 21, 12, 4, '#ece6dd', '#c07a5c', 1);
+  facade(6, 15, 21, 17, 5, '#f3f4f0', '#5fae8f', 2);
+  facade(-6, 12, -1, 16, 5, '#efe9df', '#4f6f9a', 3); // 광명고등학교
+  for (const [dx, dy] of DOORS) { // 사람이 들어가 사라지는 건물 출입문
+    const p = scr(dx, dy), t2 = T, n2 = M.night;
+    rect(n2 ? '#3a2a1c' : '#7a5230', p.x + t2 * .3, p.y + t2 * .4, t2 * .4, t2 * .6);
+    rect(n2 ? '#ffd77a' : '#f3dfb0', p.x + t2 * .36, p.y + t2 * .46, t2 * .28, t2 * .22);
+  }
+  // 8차선 정지선 + 보행 신호등
+  ctx.fillStyle = 'rgba(255,255,255,.9)';
+  const e0 = scr(9.75, 39), e1 = scr(9.75, 43); ctx.fillRect(e0.x - 2, e0.y, 4, e1.y - e0.y);
+  const w0 = scr(14.25, 35), w1 = scr(14.25, 39); ctx.fillRect(w0.x - 2, w0.y, 4, w1.y - w0.y);
+  if (M.traffic) { const now = performance.now(); drawSignal(14.5, 34.5, now); drawSignal(9.5, 43.5, now); }
+  subwayEntrance(16, 34, 3, false);
+  subwayEntrance(16, 43, 2, true);
+}
+/* 지하철 출입구: 내려가는 계단 + 유리 캐노피 + 7호선 안내판 (2칸) */
+function subwayEntrance(tx, ty, num, flip){
+  const a = scr(tx, ty), t = T, n = M.night, w = t * 2, h = t;
+  rect('rgba(0,0,0,.22)', a.x + 4, a.y + 5, w, h);
+  rect(n ? '#4a4f57' : '#9aa1aa', a.x, a.y, w, h);
+  const ix = a.x + t * .1, iy = a.y + t * .14, iw = w - t * .2, ih = h - t * .28, steps = 10;
+  for (let i = 0; i < steps; i++) {
+    const k = flip ? steps - 1 - i : i, v = Math.round((n ? 120 : 215) - k * (n ? 10 : 17));
+    rect(`rgb(${v},${v},${v + 4})`, ix + i * iw / steps, iy, iw / steps + 1, ih);
+    rect(n ? '#7a6a2a' : '#e8c34a', ix + i * iw / steps, iy, 2, ih);
+  }
+  const deep = flip ? ix : ix + iw * .75;
+  const g = ctx.createLinearGradient(flip ? ix + iw * .25 : deep, 0, flip ? ix : ix + iw, 0);
+  g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,.55)');
+  ctx.fillStyle = g; ctx.fillRect(flip ? ix : deep, iy, iw * .25, ih);
+  rect('#d6dbe2', ix, iy + 1, iw, 3); rect('#d6dbe2', ix, iy + ih - 4, iw, 3);
+  ctx.fillStyle = n ? 'rgba(150,200,235,.18)' : 'rgba(170,215,240,.38)';
+  const cx0 = flip ? a.x + w * .22 : a.x + t * .05, cw = w * .73;
+  ctx.fillRect(cx0, a.y + t * .05, cw, h - t * .1);
+  ctx.strokeStyle = '#5a6470'; ctx.lineWidth = 2; ctx.strokeRect(cx0, a.y + t * .05, cw, h - t * .1);
+  for (let i = 1; i < 4; i++) { ctx.beginPath(); ctx.moveTo(cx0 + cw * i / 4, a.y + t * .05); ctx.lineTo(cx0 + cw * i / 4, a.y + h - t * .05); ctx.stroke(); }
+  // 출구 안내판
+  const px = flip ? a.x + w + t * .08 : a.x - t * .08, py = a.y + t * .5;
+  rect('#3e434b', px - 2, py - t * .6, 4, t * .75);
+  const bw = t * 1.6, bh = t * .48, bx = flip ? px - t * .1 : px - bw + t * .1, by = py - t * 1.08;
+  rrc(ctx, bx, by, bw, bh, t * .06); ctx.fillStyle = '#2d3646'; ctx.fill();
+  ell(ctx, '#747f00', bx + bh * .55, by + bh / 2, bh * .36, bh * .36);
+  ctx.fillStyle = '#fff'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  ctx.font = `bold ${bh * .5}px sans-serif`; ctx.fillText('7', bx + bh * .55, by + bh / 2 + 1);
+  ctx.font = `${bh * .42}px Jua, "Malgun Gothic", sans-serif`; ctx.fillText('철산역', bx + bh * 1.05 + (bw - bh * 1.05 - bh * .9) / 2, by + bh / 2 + 1);
+  rrc(ctx, bx + bw - bh * .82, by + bh * .12, bh * .7, bh * .76, 3); ctx.fillStyle = '#ffd23f'; ctx.fill();
+  ctx.fillStyle = '#141a2e'; ctx.font = `bold ${bh * .55}px sans-serif`; ctx.fillText(String(num), bx + bw - bh * .47, by + bh / 2 + 1);
+}
+function facade(x0, y0, x1, y1, floors, wall, roof, seed){
+  const a = scr(x0, y0), b = scr(x1 + 1, y1 + 1), t = T, n = M.night, w = b.x - a.x, h = b.y - a.y;
+  rect(n ? '#2c3134' : wall, a.x, a.y, w, h);
+  rect(n ? '#1d2224' : roof, a.x, a.y, w, t * .18);
+  const top = a.y + t * .28, fh = (h - t * .4) / floors;
+  for (let f = 0; f < floors; f++) {
+    let i = 0;
+    for (let x = a.x + t * .14; x < b.x - t * .4; x += t * .5, i++) {
+      const lit = n && hash(i * 7 + seed, f * 13 + seed) % 4 === 0;
+      const c = n ? (lit ? '#ffd77a' : '#151a2a') : '#b9d7ec';
+      rect(c, x, top + f * fh + fh * .12, t * .32, fh * .64);
+      if (lit) glow.push([x, top + f * fh + fh * .12, t * .32, fh * .64, 'rgba(255,215,122,.9)']);
+    }
+  }
+  rect('rgba(0,0,0,.18)', a.x, b.y - t * .08, w, t * .08);
+}
+function drawSignal(tx, ty, now){
+  const p = scr(tx, ty), t = T, g = pedGreen(now), blink = g && sigLeft(now) <= 5 && Math.floor(now / 350) % 2;
+  rect('#3a3d45', p.x - t * .03, p.y - t * .2, t * .06, t * .5);
+  rrc(ctx, p.x - t * .17, p.y - t * .9, t * .34, t * .72, t * .06); ctx.fillStyle = '#16181f'; ctx.fill();
+  ell(ctx, g ? '#4a1c1c' : '#ff4b4b', p.x, p.y - t * .71, t * .12, t * .12);
+  ell(ctx, g && !blink ? '#3dff8a' : '#173a24', p.x, p.y - t * .37, t * .12, t * .12);
+  if (!g) { ctx.fillStyle = 'rgba(255,75,75,.25)'; ctx.beginPath(); ctx.arc(p.x, p.y - t * .71, t * .24, 0, 7); ctx.fill(); }
+  else if (!blink) { ctx.fillStyle = 'rgba(61,255,138,.25)'; ctx.beginPath(); ctx.arc(p.x, p.y - t * .37, t * .24, 0, 7); ctx.fill(); }
+}
+function drawPeople(now, later2, eventPass){
+  const list = [];
+  for (const n of npcs) {
+    if (n.gone || n.hidden || !!n.event !== eventPass) continue;
+    list.push({ y:n.y, f:() => {
+      const s = scr(n.x + .5, n.y + .5), mv = n.path.length > 0;
+      const idle = mv ? 0 : Math.sin(now / 500 + n.tx) * .6;
+      drawPerson(ctx, s.x, s.y, T, n.dir, mv || n.state === 'chase', mv ? n.phase : idle, n.look, (eventPass ? .8 : 1) * (n.alpha ?? 1));
+      if (n.alert) later2.push([n.event ? '?' : '!', s.x, s.y - T * (.62 + (n.look.h - 1) * .4)]);
+    }});
+  }
+  if (!eventPass && guardOn()) list.push({ y:GUARD.y, f:() => {
+    const s = scr(GUARD.x + .5, GUARD.y + .5);
+    drawPerson(ctx, s.x, s.y, T, Math.abs(P.y - GUARD.y) <= 2 && P.x > GUARD.x ? 'right' : 'down', false, 0, LOOKS.guard);
+  }});
+  if (!eventPass && !P.hidden) list.push({ y:P.fy, f:() => { const s = scr(P.fx + .5, P.fy + .5); drawPerson(ctx, s.x, s.y, T, P.dir, P.moving, P.phase, LOOKS.kid, P.script ? (P.script.a.alpha ?? 1) : 1); } });
+  list.sort((a, b) => a.y - b.y).forEach(o => o.f());
+}
+function drawLabels(){
+  if (M.key === 'out') return;
+  ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+  for (const l of LABELS) {
+    const s = scr(l.x, l.y), fs = Math.max(11, T * (l.badge || l.small ? .22 : .28));
+    ctx.font = `${fs}px Jua, "Malgun Gothic", sans-serif`;
+    const w = ctx.measureText(l.t).width + fs * 1.1, h = fs * 1.6;
+    rrc(ctx, s.x - w / 2, s.y - h / 2, w, h, h * .3);
+    ctx.fillStyle = l.badge ? '#ffd23f' : 'rgba(20,26,46,.88)'; ctx.fill();
+    ctx.fillStyle = l.badge ? '#141a2e' : '#fff'; ctx.fillText(l.t, s.x, s.y + 1);
+  }
+}
+function drawMarks(list){
+  for (const [m, x, y] of list) {
+    ell(ctx, m === '!' ? '#e5484d' : '#f0a030', x, y, T * .17, T * .17);
+    ctx.fillStyle = '#fff'; ctx.font = `bold ${T * .24}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(m, x, y + 1);
+  }
+}
+function render(now){
+  CAM = camLock || { x:P.fx, y:P.fy };
+  const zt = [DPR * Z, 0, 0, DPR * Z, W / 2 * DPR * (1 - Z), H / 2 * DPR * (1 - Z)];
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.fillStyle = M.night ? '#0b0e1c' : '#cfc8b8'; ctx.fillRect(0, 0, cv.width, cv.height);
+  ctx.setTransform(...zt);
+  glow = [];
+  const hw = W / 2 / (T * Z), hh = H / 2 / (T * Z);
+  for (let y = Math.floor(CAM.y - hh) - 1; y <= Math.ceil(CAM.y + hh) + 1; y++)
+    for (let x = Math.floor(CAM.x - hw) - 1; x <= Math.ceil(CAM.x + hw) + 1; x++) {
+      const s = scr(x, y); drawTile(tileAt(x, y), x, y, Math.floor(s.x), Math.floor(s.y), now);
+    }
+  drawDecor();
+  cars.forEach(drawCar);
+  traffic.forEach(drawCar);
+  const marks = [];
+  drawPeople(now, marks, false);
+  if (M.night) {
+    nctx.setTransform(1, 0, 0, 1, 0, 0); nctx.globalCompositeOperation = 'source-over'; nctx.clearRect(0, 0, nc.width, nc.height);
+    nctx.fillStyle = 'rgba(5,8,22,.86)'; nctx.fillRect(0, 0, nc.width, nc.height);
+    nctx.setTransform(...zt); nctx.globalCompositeOperation = 'destination-out';
+    for (const [lx, ly, r] of [[P.fx + .5, P.fy + .5, 3.1], ...M.lights]) {
+      const s = scr(lx, ly), R = r * T, g = nctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, R);
+      g.addColorStop(0, 'rgba(0,0,0,1)'); g.addColorStop(.5, 'rgba(0,0,0,.8)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+      nctx.fillStyle = g; nctx.beginPath(); nctx.arc(s.x, s.y, R, 0, 7); nctx.fill();
+    }
+    ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(nc, 0, 0); ctx.setTransform(...zt);
+    for (const [gx, gy, gw, gh, c] of glow) rect(c, gx, gy, gw, gh);
+    const st = scr(27.5, 46), g = ctx.createRadialGradient(st.x, st.y, 0, st.x, st.y, T * 5);
+    g.addColorStop(0, 'rgba(150,235,255,.16)'); g.addColorStop(1, 'rgba(150,235,255,0)');
+    ctx.fillStyle = g; ctx.fillRect(st.x - T * 5, st.y - T * 5, T * 10, T * 10);
+  }
+  drawPeople(now, marks, true);
+  drawLabels();
+  drawMarks(marks);
+  if (M.morning) {
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    const g = ctx.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, 'rgba(255,200,120,.28)'); g.addColorStop(1, 'rgba(255,240,200,.05)');
+    ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+  }
+}
+
+/* ---------- 루프 ---------- */
+const STEP_MS = 160;
+let last = performance.now();
+function frame(now){
+  const dt = Math.min(50, now - last); last = now;
+  if (P.script) {
+    const a = P.script.a; stepPath(a, dt);
+    P.fx = a.x; P.fy = a.y; P.dir = a.dir; P.phase = a.phase; P.x = Math.round(a.x); P.y = Math.round(a.y);
+    P.moving = a.path.length > 0;
+    if (!a.path.length) { const cb = P.script.cb; P.script = null; P.moving = false; cb && cb(); }
+  } else if (P.t < 1) {
+    P.t = Math.min(1, P.t + dt / STEP_MS);
+    P.fx = P.ox + (P.x - P.ox) * P.t; P.fy = P.oy + (P.y - P.oy) * P.t;
+    P.phase += dt * .025; P.moving = true;
+    if (P.t >= 1) { P.moving = false; onArrive(); }
+  } else {
+    if (mode === 'walk' && held) tryStep(held);
+    else if (mode === 'auto') {
+      if (autoQ.length) { if (!tryStep(autoQ.shift())) autoQ = []; }
+      else if (autoCb) { const f = autoCb; autoCb = null; f(); }
+    }
+  }
+  npcs.forEach(n => stepPath(n, dt));
+  cars.forEach(c => stepPath(c, dt));
+  updateTraffic(now, dt);
+  followerLogic(now);
+  if (cine) { const p = Math.min(1, (now - cine.t0) / cine.dur), e = p * p * (3 - 2 * p); Z = cine.from + (cine.to - cine.from) * e; if (p >= 1) cine = null; }
+  render(now);
+  requestAnimationFrame(frame);
+}
+
+function start(data){
+  resize(); loadMap('day'); renderBadges(); setPad();
+  requestAnimationFrame(frame);
+  /* 페이지가 열리면 시작 영상이 저절로 재생되고, 끝나면 게임이 자동으로 시작된다 */
+  $('#title').hidden = true; N = '00이'; playIntro(beginGame);
+}
+window.claude?.hot?.snapshot?.(() => ({ name:N }));
+window.claude?.hot?.ready ? window.claude.hot.ready(start) : start(window.claude?.hot?.data ?? {});
+})();
+</script>
+
+</body></html>
